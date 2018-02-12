@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <!-- 引入 echarts.js -->
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript"
+            src="https://api.map.baidu.com/api?v=2.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.0.2/echarts.js"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.0.2/extension/bmap.js"></script>
+    <script src="tool.js"></script>
+</head>
+
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div style="position: absolute;top: 10px;right: 10px;z-index: 2;background: aliceblue;padding: 8px">
+    <p id="total"></p>
+    <p id="normal"></p>
+    <p id="anomaly"></p>
+</div>
+<div id="main" style="width:100%;height:800px;"></div>
+<script type="text/javascript">
+
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null)return unescape(r[2]);
+        return null;
+    }
+
+    var key = 'TGVn20r8ILbAE5iLGVfGUmwqIoPBenya';
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+    var colors = ['#DC143C', '#D8BFD8', '#FF00FF', '#7B68EE', '#0000FF', '#1E90FF'];
+    // var convertor = new BMap.Convertor();
+    console.log("OK");
+    var normal = 0;
+    var anomaly = 0;
+    $.ajax({
+        //要用post方式      
+        type: "Post",
+        //方法所在页面和方法名      
+        url: getQueryString("json") + ".json",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        data: {},
+        error: function (XMLHttpRequest) {
+            console.log(XMLHttpRequest);
+            console.log(XMLHttpRequest.readyState);
+        },
+        success: function (data) {
+            if (getQueryString("json").indexOf("IBOAT") > 0) {
+                document.title = "iBOAT检测结果";
+            } else {
+                document.title = "DTM检测结果";
+            }
+            var lines = data.map(function (track, index) {
+                track.normal ? normal++ : anomaly++;
+                return {
+                    name: track.taxiId + ' ' + track.score,
+                    coords: track.trajectory.map(function (d) {
+                        var transform = wgs2bd(d[0], d[1]);
+                        return [transform[1], transform[0]];
+                    }),
+                    lineStyle: {normal: {color: track.normal ? '#00FFFF' : '#FF0000'}}
+                };
+            });
+            console.log(lines.length);
+            console.log(normal);
+            console.log(anomaly);
+            $("#total").text("轨迹数：" + lines.length);
+            $("#normal").text("正常：" + normal);
+            $("#anomaly").text("异常：" + anomaly);
+
+            myChart.setOption(option = {
+                bmap: {
+                    center: [121.592292, 31.244127],
+                    zoom: 14,
+                    roam: true,
+                    mapStyle: {
+                        styleJson: [
+                            {
+                                'featureType': 'green',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            }, {
+                                'featureType': 'subway',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            },
+                            {
+                                'featureType': 'local',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#d1d1d1'
+                                }
+                            }, {
+                                'featureType': 'arterial',
+                                'elementType': 'labels',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            }, {
+                                'featureType': 'boundary',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#fefefe'
+                                }
+                            }, {
+                                'featureType': 'building',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#d1d1d1'
+                                }
+                            },
+                            {
+                                'featureType': 'highway',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#fdfdfd'
+                                }
+                            },
+                            {
+                                'featureType': 'label',
+                                'elementType': 'labels.text.fill',
+                                'stylers': {
+                                    'color': '#999999'
+                                }
+                            }
+
+                        ]
+                    }
+                },
+                series: [{
+                    type: 'lines',
+                    coordinateSystem: 'bmap',
+                    data: lines,
+                    polyline: true,
+                    lineStyle: {
+                        normal: {
+                            color: 'purple',
+                            opacity: 0.6,
+                            width: 1
+                        }
+                    }
+
+                }]
+            });
+                myChart.on('click', function (params) {
+                    // 控制台打印数据的名称
+                    console.log(params.name);
+                      var newData=[];
+                    for(var i=0;i<lines.length;i++){
+                        //console.log(lines.name)
+                        if(lines[i].name!=params.name){
+                            newData.push(lines[i]);
+                        }
+                    }
+                    lines=newData;
+                    myChart.setOption(option = {
+                        series: [{
+                        data: lines}]
+                    });
+                });
+        }
+    });
+</script>
+</body>
+
+</html>

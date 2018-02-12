@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+    <style type="text/css">
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            font-family: "微软雅黑";
+        }
+
+        #allmap {
+            height: 100%;
+            width: 70%;
+            float: left;
+        }
+
+        #chart {
+            float: right;
+            height: 400px;
+            width: 29%;
+        }
+
+        #hint {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+    </style>
+    <script src="https://cdn.bootcss.com/echarts/4.0.2/echarts.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript"
+            src="https://api.map.baidu.com/api?v=2.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+    <script type="text/javascript" src="tool.js"></script>
+    <title>在线检测</title>
+</head>
+
+<body>
+<div id="allmap"></div>
+<div id="chart"></div>
+<div id="hint"></div>
+</body>
+
+</html>
+<script type="text/javascript">
+    // 百度地图API功能
+    var map = new BMap.Map("allmap");
+    var point = new BMap.Point(121.333517, 31.173008);
+    map.centerAndZoom(point, 13);
+
+    var mapType1 = new BMap.MapTypeControl({anchor: BMAP_ANCHOR_TOP_RIGHT});
+    var top_left_control = new BMap.ScaleControl({anchor: BMAP_ANCHOR_TOP_LEFT});// 左上角，添加比例尺
+    var top_left_navigation = new BMap.NavigationControl();  //左上角，添加默认缩放平移控件
+    map.addControl(mapType1);          //2D图，卫星图
+    map.addControl(top_left_control);
+    map.addControl(top_left_navigation);
+    map.enableScrollWheelZoom();//启用滚轮
+
+    var menu = new BMap.ContextMenu();
+    var txtMenuItem = [
+        {
+            text: '设为起点',
+            callback: function (e) {
+                lastPoint = new BMap.Point(e.lng, e.lat);
+                var marker = new BMap.Marker(lastPoint);  // 创建标注
+                map.addOverlay(marker);              // 将标注添加到地图中
+                var label = new BMap.Label("起点", {offset: new BMap.Size(20, -10)});
+                marker.setLabel(label);
+                startPoint = bd2wgs(e.lat, e.lng);
+
+            }
+        },
+        {
+            text: '设为终点',
+            callback: function (e) {
+                var marker = new BMap.Marker(new BMap.Point(e.lng, e.lat));  // 创建标注
+                map.addOverlay(marker);              // 将标注添加到地图中
+                var label = new BMap.Label("终点", {offset: new BMap.Size(20, -10)});
+                marker.setLabel(label);
+                endPoint = bd2wgs(e.lat, e.lng);
+                initDetect();
+            }
+        }
+    ];
+    for (var i = 0; i < txtMenuItem.length; i++) {
+        menu.addItem(new BMap.MenuItem(txtMenuItem[i].text, txtMenuItem[i].callback, 100));
+    }
+    map.addContextMenu(menu);
+
+    var startPoint, endPoint;
+    //var urlPreFix = 'http://192.168.1.8:8080/iBOAT/';
+    var urlPreFix = '';
+    var index = 0;
+    var id;
+    var lastPoint, currentPoint;
+    function initDetect() {
+        id = uuid();
+
+        menu.removeItem(menu.getItem(1));
+        menu.removeItem(menu.getItem(0));
+        menu.addItem(new BMap.MenuItem('经过',
+            function (e) {
+                detect(id, e.lat, e.lng);
+            }, 100));
+
+        $.ajax({
+            type: "get",
+            url: urlPreFix + 'OnlineDetect?id=' + id + '&start=' + startPoint[0] + ',' + startPoint[1] + '&end=' + endPoint[0] + ',' + endPoint[1],
+            dataType: "jsonp",
+            jsonp: "callback",
+            success: function (json) {
+                initWebSocket();
+                $("#hint").text("正在初始化...");
+            }
+        });
+    }
+
+    function initWebSocket() {
+        var ws = new WebSocket("ws://" + location.host + "/iBOAT/init");
+
+        ws.onopen = function () {
+            ws.send(id);
+        }
+        ws.onmessage = function (evn) {
+            console.log(evn.data);
+            if (evn.data === "initDone") {
+                $("#hint").text("初始化完成");
+            }else if(evn.data === "historyDone")
+            {
+                window.open("history.html?id="+id);
+            }
+        }
+    }
+
+    function detect(id, lat, lng) {
+        point = bd2wgs(lat, lng);
+        $.ajax({
+            type: "get",
+            url: urlPreFix + 'OnlineDetect?id=' + id + '&point=' + point[0] + ',' + point[1],
+            dataType: "jsonp",
+            jsonp: "callback",
+            success: function (json) {
+                console.log(json);
+                if (json.code == 200) {
+                    var msg = eval('(' + json.msg + ')');
+                    if (msg.code == 0 || msg.code == 1 || msg.code == 3) {
+                        index++;
+                        var myIcon;
+                        if (msg.code == 0)
+                            myIcon = new BMap.Icon("marker_red_sprite.png", new BMap.Size(19, 25));
+                        else if(msg.code == 1)
+                            myIcon = new BMap.Icon("marker_blue_sprite.png", new BMap.Size(19, 25));
+                        else{
+                            myIcon = new BMap.Icon("marker_red_sprite.png", new BMap.Size(19, 25));
+                            $("#hint").text("检测完成！");
+                        }
+                        currentPoint = new BMap.Point(lng, lat);
+                        var marker = new BMap.Marker(currentPoint, {icon: myIcon});  // 创建标注
+                        map.addOverlay(marker);              // 将标注添加到地图中
+                        var label = new BMap.Label(index, {offset: new BMap.Size(20, -10)});
+                        marker.setLabel(label);
+
+                        var polygon = new BMap.Polygon([lastPoint, currentPoint], {
+                            strokeColor: "blue",
+                            strokeWeight: 2,
+                            strokeOpacity: 0.5
+                        });
+                        map.addOverlay(polygon);
+                        lastPoint = currentPoint;
+
+                        data.push({
+                            name: msg.support + ' ' + msg.lastSupportSize + ' ' + msg.currentSupportSize,
+                            value: [index, msg.support * 100]
+                        });
+
+                        myChart.setOption({
+                            series: [{
+                                data: data
+                            }]
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    map.addEventListener("click", function (e) {
+        var gps = bd2wgs(e.point.lat, e.point.lng);
+        console.log(gps);
+    });
+
+
+    //chart
+    var myChart = echarts.init(document.getElementById('chart'));
+
+    // 指定图表的配置项和数据
+    var option = {
+        title: {
+            text: '支持度'
+        },
+        tooltip: {
+            trigger: 'axis'
+        },
+        legend: {
+            data: ['支持度']
+        },
+        xAxis: {
+            type: 'value',
+            boundaryGap: false,
+            //data: ['1','2','3','4','5']
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: '{value} %'
+            }
+        },
+        series: [
+            {
+                name: '支持度',
+                type: 'line',
+                //data:[100, 80, 70, 80, 90, 60, 50],
+                // markPoint: {
+                //     data: [
+                //         {type: 'max', name: '最大值'},
+                //         {type: 'min', name: '最小值'}
+                //     ]
+                // },
+                markLine: {
+                    data: [
+                        {yAxis: 4, name: '阈值'}
+                    ]
+                }
+
+            }
+        ]
+    };
+    myChart.setOption(option);
+    var data = [];
+
+
+</script>
