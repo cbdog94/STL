@@ -9,8 +9,8 @@
     <version>1.0</version>
 
     <properties>
-        <hadoopVersion>2.8.3</hadoopVersion>
-        <hbaseVersion>1.3.0</hbaseVersion>
+        <hadoopVersion>2.9.0</hadoopVersion>
+        <hbaseVersion>1.4.4</hbaseVersion>
     </properties>
 
     <dependencies>
