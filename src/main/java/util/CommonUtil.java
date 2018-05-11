@@ -2,6 +2,9 @@ package util;
 
 import bean.Cell;
 import bean.GPS;
+import constant.HBaseConstant;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import java.util.Arrays;
 import java.util.List;
@@ -179,6 +182,62 @@ public class CommonUtil {
         } else {
             return (1 - g) * data[i] + g * data[i + 1];
         }
+    }
+
+    private static final double DISTANCE_LIMIT = 65 * 1000;
+
+    public static String getTrajectoryTable(String city) {
+        switch (city) {
+            case "SH":
+                return HBaseConstant.TABLE_SH_TRAJECTORY;
+            case "SZ":
+                return HBaseConstant.TABLE_SZ_TRAJECTORY;
+            case "CD":
+                return HBaseConstant.TABLE_CD_TRAJECTORY;
+        }
+        return null;
+    }
+
+    public static String getInvertedTable(String city) {
+        switch (city) {
+            case "SH":
+                return HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED;
+            case "SZ":
+                return HBaseConstant.TABLE_SZ_TRAJECTORY_INVERTED;
+            case "CD":
+                return HBaseConstant.TABLE_CD_TRAJECTORY_INVERTED;
+        }
+        return null;
+    }
+
+    public static boolean legalInput(String city) {
+        return city.equals("SH") || city.equals("SZ") || city.equals("CD");
+    }
+
+    /**
+     * Map the GPS trajectory to Cell trajectory, and convert the form of data so that it can be inserted into HBase.
+     */
+    public static Put preProcessTrajectory(String taxiID, List<GPS> trajectory) {
+
+        //ignore while the trajectory is too long.
+        double distance = util.CommonUtil.trajectoryDistance(trajectory);
+        if (distance > DISTANCE_LIMIT)
+            return null;
+
+        //generate grid cell trajectory.
+        List<Cell> cells = GridUtil.gridGPSSequence(trajectory);
+
+        //if the number of cells are less than 5, we suppose that this trajectory is noise data.
+        if (cells.size() < 5)
+            return null;
+
+        Put put = new Put(Bytes.toBytes(util.CommonUtil.getUUID()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID, Bytes.toBytes(taxiID));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_CELL, Bytes.toBytes(cells.toString()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_GPS, Bytes.toBytes(trajectory.toString()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_DISTANCE, Bytes.toBytes(distance));
+        return put;
+
     }
 
 }

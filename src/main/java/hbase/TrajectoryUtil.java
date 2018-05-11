@@ -20,10 +20,10 @@ public class TrajectoryUtil {
      */
     public static List<Cell> getTrajectoryCells(String trajectoryID) {
         String result = hBaseUtil.getColumnFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY,
+                HBaseConstant.TABLE_SH_TRAJECTORY,
                 trajectoryID.getBytes(),
                 HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_TRAJECTORY);
+                HBaseConstant.COLUMN_CELL);
 
         String[] tileSplits = result.substring(1, result.length() - 1).split(", ");
 
@@ -39,7 +39,7 @@ public class TrajectoryUtil {
      */
     public static List<GPS> getTrajectoryGPSPoints(String trajectoryID) {
         String result = hBaseUtil.getColumnFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY,
+                HBaseConstant.TABLE_SH_TRAJECTORY,
                 trajectoryID.getBytes(),
                 HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
                 HBaseConstant.COLUMN_GPS);
@@ -61,11 +61,11 @@ public class TrajectoryUtil {
      */
     public static Map<String, List<Cell>> getAllTrajectoryCells(Cell start, Cell end) {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY_INVERTED,
+                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
                 start.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
         Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY_INVERTED,
+                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
                 end.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
 
@@ -95,11 +95,11 @@ public class TrajectoryUtil {
      */
     public static Set<String> getAllTrajectoryID(Cell start, Cell end) {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY_INVERTED,
+                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
                 start.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
         Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_TRAJECTORY_INVERTED,
+                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
                 end.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
 

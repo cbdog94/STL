@@ -1,5 +1,6 @@
 package hbase;
 
+import constant.HBaseConstant;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -9,9 +10,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.NavigableMap;
 
 /**
  * Created by cbdog94 on 17-3-17.
@@ -23,8 +22,8 @@ public class HBaseUtil {
     public HBaseUtil() {
         try {
             Configuration conf = HBaseConfiguration.create();
-            conf.set("hbase.zookeeper.quorum", "192.168.1.10");
-            conf.set("hbase.zookeeper.property.clientPort", "2181");
+            conf.set("hbase.zookeeper.quorum", HBaseConstant.ZOOKEEPER_HOST);
+            conf.set("hbase.zookeeper.property.clientPort", HBaseConstant.ZOOKEEPER_PORT);
             connection = ConnectionFactory.createConnection(conf);
         } catch (Exception e) {
             e.printStackTrace();
@@ -51,12 +50,7 @@ public class HBaseUtil {
         Map<String, String> resultMap = new HashMap<>();
         try {
             Table table = connection.getTable(TableName.valueOf(tableName));
-
-//            Get get = new Get(rowKey).addFamily(columnFamily);
             Result resultCell = table.get(new Get(rowKey).addFamily(columnFamily));
-
-//            NavigableMap<byte[],byte[]> map=resultCell.getFamilyMap(columnFamily);
-//            for(map.keySet())
             while (resultCell.advance()) {
                 String key = Bytes.toString(CellUtil.cloneQualifier(resultCell.current()));
                 String value = Bytes.toString(CellUtil.cloneValue(resultCell.current()));

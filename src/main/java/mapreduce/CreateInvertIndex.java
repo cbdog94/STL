@@ -13,6 +13,7 @@ import org.apache.hadoop.hbase.mapreduce.TableReducer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import util.CommonUtil;
 
 import java.io.IOException;
 
@@ -23,24 +24,44 @@ import java.io.IOException;
  */
 public class CreateInvertIndex {
 
-    /**
-     * split the whole trajectory into piece of tiles.
-     */
-    public static class Map extends TableMapper<Text, Text> {
+    public static void main(String[] args) throws Exception {
+        if (args.length != 1) {
+            System.out.println("Please input the CITY (SH / SZ)!");
+            return;
+        } else if (!CommonUtil.legalInput(args[0]))
+            return;
 
-        @Override
-        public void map(ImmutableBytesWritable row, Result value, Context context) throws InterruptedException, IOException {
-            // process data for the row from the Result instance.
-            String trajectoryId = Bytes.toString(value.getRow());
-            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID));
-            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_TRAJECTORY));
+        Configuration config = HBaseConfiguration.create();
+        config.setLong("mapred.task.timeout", 60 * 60 * 100);
+        Job job = Job.getInstance(config, "CreateInvertIndex");
+        job.setJarByClass(CreateInvertIndex.class);    // class that contains mapper
 
-            String[] tiles = trajectory.substring(1, trajectory.length() - 1).split(", ");
-            for (int i = 0; i < tiles.length; i++) {
-                context.write(new Text(tiles[i]), new Text(trajectoryId + "," + i));
-            }
+        Scan scan = new Scan();
+        scan.setCaching(1000);        // 1 is the default in Scan, which will be bad for MapReduce jobs
+        scan.setCacheBlocks(false);  // don't set to true for MR jobs
+
+        String city = args[0];
+        String trajectoryTable = CommonUtil.getTrajectoryTable(city);
+        String invertedTable = CommonUtil.getInvertedTable(city);
+
+        TableMapReduceUtil.initTableMapperJob(
+                trajectoryTable,      // input table
+                scan,             // Scan instance to control CF and attribute selection
+                Map.class,   // mapper class
+                Text.class,             // mapper output key
+                Text.class,             // mapper output value
+                job);
+        TableMapReduceUtil.initTableReducerJob(
+                invertedTable,        // output table
+                Reduce.class,    // reducer class
+                job);
+
+        job.setNumReduceTasks(48);
+
+        boolean b = job.waitForCompletion(true);
+        if (!b) {
+            throw new IOException("error with job!");
         }
-
     }
 
     /**
@@ -66,33 +87,23 @@ public class CreateInvertIndex {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        Configuration config = HBaseConfiguration.create();
-        config.setLong("mapred.task.timeout", 60 * 60 * 100);
-        Job job = Job.getInstance(config, "CreateInvertIndex");
-        job.setJarByClass(CreateInvertIndex.class);    // class that contains mapper
+    /**
+     * split the whole trajectory into piece of tiles.
+     */
+    public static class Map extends TableMapper<Text, Text> {
 
-        Scan scan = new Scan();
-        scan.setCaching(500);        // 1 is the default in Scan, which will be bad for MapReduce jobs
-        scan.setCacheBlocks(false);  // don't set to true for MR jobs
+        @Override
+        public void map(ImmutableBytesWritable row, Result value, Context context) throws InterruptedException, IOException {
+            // process data for the row from the Result instance.
+            String trajectoryId = Bytes.toString(value.getRow());
+            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID));
+            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_CELL));
 
-        TableMapReduceUtil.initTableMapperJob(
-                HBaseConstant.TABLE_TRAJECTORY,      // input table
-                scan,             // Scan instance to control CF and attribute selection
-                Map.class,   // mapper class
-                Text.class,             // mapper output key
-                Text.class,             // mapper output value
-                job);
-        TableMapReduceUtil.initTableReducerJob(
-                HBaseConstant.TABLE_TRAJECTORY_INVERTED,        // output table
-                Reduce.class,    // reducer class
-                job);
-
-        job.setNumReduceTasks(36);
-
-        boolean b = job.waitForCompletion(true);
-        if (!b) {
-            throw new IOException("error with job!");
+            String[] tiles = trajectory.substring(1, trajectory.length() - 1).split(", ");
+            for (int i = 0; i < tiles.length; i++) {
+                context.write(new Text(tiles[i]), new Text(trajectoryId + "," + i));
+            }
         }
+
     }
 }
