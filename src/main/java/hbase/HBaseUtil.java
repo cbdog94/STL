@@ -10,7 +10,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by cbdog94 on 17-3-17.
@@ -40,6 +42,31 @@ public class HBaseUtil {
             Table table = connection.getTable(TableName.valueOf(tableName));
             Result resultCell = table.get(new Get(rowKey));
             return Bytes.toString(resultCell.getValue(columnFamily, column));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public Map<String, String> getBatchColumnFromHBase(String tableName, List<byte[]> rowKeys, byte[] columnFamily, byte[] column) {
+        try {
+            Table table = connection.getTable(TableName.valueOf(tableName));
+            List<Get> getList = rowKeys.stream().map(Get::new).collect(Collectors.toList());
+//            List<Get> getList = new ArrayList<>();
+//            for (byte[] rowKey : rowKeys) {
+//                getList.add(new Get(rowKey));
+//            }
+            Result[] resultCells = table.get(getList);
+            Map<String, String> map = new HashMap<>();
+            for (Result resultCell : resultCells) {
+                map.put(Bytes.toString(resultCell.getRow()), Bytes.toString(resultCell.getValue(columnFamily, column)));
+            }
+            //            List<String> resultString = new ArrayList<>();
+//            for (Result resultCell : resultCells) {
+//                resultString.add(Bytes.toString(resultCell.getValue(columnFamily, column)));
+//            }
+            return map;
+//            return Arrays.stream(resultCells).map(s -> Bytes.toString(s.getValue(columnFamily, column))).collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();
         }

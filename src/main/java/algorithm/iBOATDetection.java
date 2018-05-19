@@ -6,7 +6,8 @@ import util.CommonUtil;
 import util.TileSystem;
 import web.OnlineDetect;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The algorithm of iBOAT.
@@ -30,11 +31,11 @@ public class iBOATDetection {
      * @return 异常点占整个轨迹的百分比
      */
     public static double iBOAT(List<GPS> testTrajectory, List<List<Cell>> allTrajectories, double threshold) {
-        anomalyCells = new ArrayList<>();
-        supportTrajectories = new ArrayList<>(allTrajectories);
-        adaptiveWindow = new ArrayList<>();
+        List<Cell> anomalyCells = new ArrayList<>();
+        List<List<Cell>> supportTrajectories = new ArrayList<>(allTrajectories);
+        List<Cell> adaptiveWindow = new ArrayList<>();
         int lastPosition = 0;
-        score = 0.0;
+        double score = 0.0;
         int cellNum = 0;
 
         for (int i = 0; i < testTrajectory.size(); i++) {
@@ -47,10 +48,6 @@ public class iBOATDetection {
 
             int lastSupportSize = supportTrajectories.size();
             supportTrajectories.removeIf(cells -> !hasCommonPath(adaptiveWindow, cells));
-
-//            System.out.println("--------");
-//            System.out.println(cell);
-//            System.out.println(lastSupportSize + " " + supportTrajectories.size());
 
             double support = supportTrajectories.size() * 1.0 / lastSupportSize;
             if (support < threshold) {

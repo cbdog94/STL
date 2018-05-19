@@ -8,6 +8,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import util.CommonUtil;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * STL algorithm
@@ -18,10 +19,10 @@ public class STLDetection {
 
     private static final int DEGREE = 3;
     private static final double THRESHOLD = 0.9;
-    private static Map<Integer, double[]> cacheWT = new HashMap<>();
-    private static Map<Integer, double[]> cacheWD = new HashMap<>();
-    private static Map<Integer, Double> cacheET = new HashMap<>();
-    private static Map<Integer, Double> cacheED = new HashMap<>();
+    private static Map<Integer, double[]> cacheWT = new ConcurrentHashMap<>();
+    private static Map<Integer, double[]> cacheWD = new ConcurrentHashMap<>();
+    private static Map<Integer, Double> cacheET = new ConcurrentHashMap<>();
+    private static Map<Integer, Double> cacheED = new ConcurrentHashMap<>();
 
     public static double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory) {
         return detect(allNormalTrajectories, testTrajectory, THRESHOLD, THRESHOLD, DEGREE);

@@ -3,8 +3,11 @@ package hbase;
 import bean.Cell;
 import bean.GPS;
 import constant.HBaseConstant;
+import util.CommonUtil;
+import util.TileSystem;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The methods of getting trajectory.
@@ -14,25 +17,6 @@ import java.util.*;
 public class TrajectoryUtil {
 
     private static HBaseUtil hBaseUtil = new HBaseUtil();
-
-    /**
-     * Acquire the trajectoryPoints of trajectoryID from HBase
-     */
-    public static List<Cell> getTrajectoryCells(String trajectoryID) {
-        String result = hBaseUtil.getColumnFromHBase(
-                HBaseConstant.TABLE_SH_TRAJECTORY,
-                trajectoryID.getBytes(),
-                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_CELL);
-
-        String[] tileSplits = result.substring(1, result.length() - 1).split(", ");
-
-        List<Cell> cellList = new ArrayList<>();
-        for (String tile : tileSplits) {
-            cellList.add(new Cell(tile));
-        }
-        return cellList;
-    }
 
     /**
      * Acquire the trajectoryPoints of trajectoryID from HBase
@@ -54,38 +38,92 @@ public class TrajectoryUtil {
     }
 
     /**
-     * Acquire allTrajectoryPoints passed the start point and the end point.
-     *
-     * @param start start point
-     * @param end   end point
+     * Acquire the trajectoryPoints of trajectoryID from HBase
      */
-    public static Map<String, List<Cell>> getAllTrajectoryCells(Cell start, Cell end) {
-        Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
-                start.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
-        Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
-                end.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
+    public static List<Cell> getTrajectoryCells(String trajectoryID) {
+        String result = hBaseUtil.getColumnFromHBase(
+                HBaseConstant.TABLE_SH_TRAJECTORY,
+                trajectoryID.getBytes(),
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
+                HBaseConstant.COLUMN_CELL);
 
-        Set<String> trajectoryID = getAllTrajectoryID(startMaps, endMaps);
+        String[] tileSplits = result.substring(1, result.length() - 1).split(", ");
 
-        Map<String, List<Cell>> allTrajectories = new HashMap<>();
-        for (String trajectoryId : trajectoryID) {
-            //The trajectory passed the start point and the end point,
-            // but may not start at the start point or end at the end point.
-            List<Cell> trajectory = getTrajectoryCells(trajectoryId);
-
-            int startIndex = Integer.parseInt(startMaps.get(trajectoryId));
-            int endIndex = Integer.parseInt(endMaps.get(trajectoryId));
-
-            //Only reserve the part from the start point to the end point.
-            allTrajectories.put(trajectoryId, new ArrayList<>(trajectory.subList(startIndex, endIndex + 1)));
+        List<Cell> cellList = new ArrayList<>();
+        for (String tile : tileSplits) {
+            cellList.add(new Cell(tile));
         }
-        return allTrajectories;
-
+        return cellList;
     }
+
+    private static Map<String, List<Cell>> getTrajectoryCells(List<String> trajectoryID, String city) {
+        List<byte[]> trajectoryBytes = trajectoryID.stream().map(String::getBytes).collect(Collectors.toList());
+        Map<String, String> queryResult = hBaseUtil.getBatchColumnFromHBase(
+                CommonUtil.getTrajectoryTable(city),
+                trajectoryBytes,
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
+                HBaseConstant.COLUMN_CELL);
+
+        Map<String, List<Cell>> result = new HashMap<>();
+        for (Map.Entry<String, String> entry : queryResult.entrySet()) {
+            String s = entry.getValue();
+            result.put(entry.getKey(), Arrays.stream(s.substring(1, s.length() - 1).split(", ")).map(Cell::new).collect(Collectors.toList()));
+        }
+
+        return result;
+    }
+
+    private static Map<String, List<GPS>> getTrajectoryGPSs(List<String> trajectoryID, String city) {
+        List<byte[]> trajectoryBytes = trajectoryID.stream().map(String::getBytes).collect(Collectors.toList());
+        Map<String, String> queryResult = hBaseUtil.getBatchColumnFromHBase(
+                CommonUtil.getTrajectoryTable(city),
+                trajectoryBytes,
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
+                HBaseConstant.COLUMN_GPS);
+
+        Map<String, List<GPS>> result = new HashMap<>();
+        for (Map.Entry<String, String> entry : queryResult.entrySet()) {
+            String s = entry.getValue();
+            result.put(entry.getKey(), Arrays.stream(s.substring(1, s.length() - 1).split(", ")).map(GPS::new).collect(Collectors.toList()));
+        }
+
+        return result;
+    }
+
+
+//    /**
+//     * Acquire allTrajectoryPoints passed the start point and the end point.
+//     *
+//     * @param start start point
+//     * @param end   end point
+//     */
+//    public static Map<String, List<Cell>> getAllTrajectoryCells(Cell start, Cell end) {
+//        Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+//                start.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//        Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+//                end.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//
+//        Set<String> trajectoryID = getAllTrajectoryID(startMaps, endMaps);
+//
+//        Map<String, List<Cell>> allTrajectories = new HashMap<>();
+//        for (String trajectoryId : trajectoryID) {
+//            //The trajectory passed the start point and the end point,
+//            // but may not start at the start point or end at the end point.
+//            List<Cell> trajectory = getTrajectoryCells(trajectoryId);
+//
+//            int startIndex = Integer.parseInt(startMaps.get(trajectoryId));
+//            int endIndex = Integer.parseInt(endMaps.get(trajectoryId));
+//
+//            //Only reserve the part from the start point to the end point.
+//            allTrajectories.put(trajectoryId, new ArrayList<>(trajectory.subList(startIndex, endIndex + 1)));
+//        }
+//        return allTrajectories;
+//
+//    }
 
     /**
      * Acquire allTrajectoryID passed the start point and the end point.
@@ -93,17 +131,127 @@ public class TrajectoryUtil {
      * @param start start point
      * @param end   end point
      */
-    public static Set<String> getAllTrajectoryID(Cell start, Cell end) {
+    public static Set<String> getAllTrajectoryID(Cell start, Cell end, String city) {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+                CommonUtil.getInvertedTable(city),
                 start.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
         Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
-                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+                CommonUtil.getInvertedTable(city),
                 end.toString().getBytes(),
                 HBaseConstant.COLUMN_FAMILY_INDEX);
 
         return getAllTrajectoryID(startMaps, endMaps);
+    }
+
+    //TODO
+//    public static Set<String> getAllExactTrajectoryID(Cell start, Cell end) {
+//        Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+//                start.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//        Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                HBaseConstant.TABLE_SH_TRAJECTORY_INVERTED,
+//                end.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//
+//        return getAllTrajectoryID(startMaps, endMaps);
+//    }
+
+    //TODO
+//    private static Set<String> getAllExactTrajectoryID(Map<String, String> startMaps, Map<String, String> endMaps) {
+//
+//        Set<String> allTrajectoryID = getAllTrajectoryID(startMaps,endMaps);
+//
+//
+//        return trajectoryIntersection;
+//    }
+
+//    public static Map<String, List<Cell>> getAllExactTrajectoryCell(Cell start, Cell end, String city) {
+//        Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                CommonUtil.getInvertedTable(city),
+//                start.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//        Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
+//                CommonUtil.getInvertedTable(city),
+//                end.toString().getBytes(),
+//                HBaseConstant.COLUMN_FAMILY_INDEX);
+//
+//        Set<String> trajectoryID = getAllTrajectoryID(startMaps, endMaps);
+//
+//        Map<String, List<Cell>> allTrajectories = new HashMap<>();
+//        for (String trajectoryId : trajectoryID) {
+//            //The trajectory passed the start point and the end point,
+//            // but may not start at the start point or end at the end point.
+//            List<Cell> trajectory = getTrajectoryCells(trajectoryId);
+//
+//            int startIndex = Integer.parseInt(startMaps.get(trajectoryId));
+//            int endIndex = Integer.parseInt(endMaps.get(trajectoryId));
+//
+//            //Only reserve the part from the start point to the end point.
+//            allTrajectories.put(trajectoryId, new ArrayList<>(trajectory.subList(startIndex, endIndex + 1)));
+//        }
+//        return allTrajectories;
+//
+//    }
+
+    public static Map<String, List<Cell>> getAllTrajectoryCells(Cell start, Cell end, String city) {
+        Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
+                CommonUtil.getInvertedTable(city),
+                start.toString().getBytes(),
+                HBaseConstant.COLUMN_FAMILY_INDEX);
+        Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
+                CommonUtil.getInvertedTable(city),
+                end.toString().getBytes(),
+                HBaseConstant.COLUMN_FAMILY_INDEX);
+
+        Set<String> trajectoryID = getAllTrajectoryID(startMaps, endMaps);
+
+        Map<String, List<Cell>> allTrajectories = getTrajectoryCells(new ArrayList<>(trajectoryID), city);
+        for (String trajectoryId : trajectoryID) {
+
+            int startIndex = Integer.parseInt(startMaps.get(trajectoryId));
+            int endIndex = Integer.parseInt(endMaps.get(trajectoryId));
+
+            //Only reserve the part from the start point to the end point.
+            allTrajectories.put(trajectoryId, allTrajectories.get(trajectoryId).subList(startIndex, endIndex + 1));
+        }
+        return allTrajectories;
+    }
+
+    public static Map<String, List<GPS>> getAllTrajectoryGPSs(Cell start, Cell end, String city) {
+        Set<String> trajectoryID = getAllTrajectoryID(start, end, city);
+        Map<String, List<GPS>> allTrajectories = getTrajectoryGPSs(new ArrayList<>(trajectoryID), city);
+        for (String trajectoryId : trajectoryID) {
+            List<GPS> cutTrajectory = removeExtraGPS(allTrajectories.get(trajectoryId), start, end);
+            if (cutTrajectory != null)
+                allTrajectories.put(trajectoryId, cutTrajectory);
+            else
+                allTrajectories.remove(trajectoryId);
+        }
+        return allTrajectories;
+    }
+
+    private static List<GPS> removeExtraGPS(List<GPS> gpsTrajectory, Cell start, Cell end) {
+        int startIndex = 0, endIndex = 0;
+        boolean startFound = false, endFound = false;
+        for (int i = 0; i < gpsTrajectory.size(); i++) {
+            if (TileSystem.GPSToTile(gpsTrajectory.get(i)).equals(start)) {
+                startIndex = i;
+                startFound = true;
+            } else if (TileSystem.GPSToTile(gpsTrajectory.get(i)).equals(end)) {
+                endIndex = i;
+                endFound = true;
+            }
+        }
+        try {
+            if (startFound && endFound)
+                return gpsTrajectory.subList(startIndex, endIndex);
+            else
+                return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Set<String> getAllTrajectoryID(Map<String, String> startMaps, Map<String, String> endMaps) {
@@ -125,20 +273,24 @@ public class TrajectoryUtil {
         return trajectoryIntersection;
     }
 
-    public static List<List<Cell>> getAllTrajectoryCell(Set<String> trajectoryID) {
-        List<List<Cell>> result = new ArrayList<>();
-        for (String id : trajectoryID) {
-            result.add(getTrajectoryCells(id));
-        }
-        return result;
-    }
+//    public static List<List<Cell>> getAllTrajectoryCell(Set<String> trajectoryID) {
+//        List<List<Cell>> result = new ArrayList<>();
+//        for (String id : trajectoryID) {
+//            result.add(getTrajectoryCells(id));
+//        }
+//        return result;
+//    }
+//
+//    public static List<List<GPS>> getAllTrajectoryGPS(Set<String> trajectoryID) {
+//        List<List<GPS>> result = new ArrayList<>();
+//        for (String id : trajectoryID) {
+//            result.add(getTrajectoryGPSPoints(id));
+//        }
+//        return result;
+//    }
 
-    public static List<List<GPS>> getAllTrajectoryGPS(Set<String> trajectoryID) {
-        List<List<GPS>> result = new ArrayList<>();
-        for (String id : trajectoryID) {
-            result.add(getTrajectoryGPSPoints(id));
-        }
-        return result;
+    public static void main(String[] args) {
+
     }
 
 }

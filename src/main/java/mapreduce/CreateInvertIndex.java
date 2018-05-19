@@ -28,7 +28,7 @@ public class CreateInvertIndex {
         if (args.length != 1) {
             System.out.println("Please input the CITY (SH / SZ)!");
             return;
-        } else if (!CommonUtil.legalInput(args[0]))
+        } else if (!CommonUtil.isValidCity(args[0]))
             return;
 
         Configuration config = HBaseConfiguration.create();

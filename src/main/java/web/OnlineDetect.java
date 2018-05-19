@@ -114,11 +114,11 @@ public class OnlineDetect extends HttpServlet {
         Cell startCell = TileSystem.GPSToTile(startPoint);
         Cell endCell = TileSystem.GPSToTile(endPoint);
 
-        Set<String> allTrajectoryID = TrajectoryUtil.getAllTrajectoryID(startCell, endCell);
+        Map<String, List<GPS>> allTrajectoryGPSs = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, "SH");
 
         //write file
         new Thread(() -> {
-            List<List<GPS>> allTrajectoriesGPS = TrajectoryUtil.getAllTrajectoryGPS(allTrajectoryID);
+            List<List<GPS>> allTrajectoriesGPS = new ArrayList<>(allTrajectoryGPSs.values());
             String root = getServletContext().getRealPath("/");
             File file = FileUtils.getFile(root + "detect_" + id + ".json");
 
@@ -131,7 +131,7 @@ public class OnlineDetect extends HttpServlet {
             WebSocketServer.sendMessage(id, "historyDone");
         }).run();
 
-        List<List<Cell>> allTrajectoriesList = TrajectoryUtil.getAllTrajectoryCell(allTrajectoryID);
+        List<List<Cell>> allTrajectoriesList = new ArrayList<>(TrajectoryUtil.getAllTrajectoryCells(startCell, endCell, "SH").values());
 
         anomalyCells.put(id, new ArrayList<>());
         adaptiveWindow.put(id, new ArrayList<>());
@@ -151,7 +151,7 @@ public class OnlineDetect extends HttpServlet {
 
         for (List<GPS> trajectory : allTrajectoriesGPS) {
             List<GPS> removed = CommonUtil.removeExtraGPS(trajectory, start, end);
-            if (removed == null||removed.size()==0)
+            if (removed == null || removed.size() == 0)
                 continue;
             List<Double[]> item = new ArrayList<>();
             for (GPS gps : removed) {

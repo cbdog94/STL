@@ -89,7 +89,7 @@ public class ExportDistance {
         scan.setCacheBlocks(false);  // don't set to true for MR jobs
 
         TableMapReduceUtil.initTableMapperJob(
-                HBaseConstant.TABLE_TRAJECTORY,      // input table
+                HBaseConstant.TABLE_SH_TRAJECTORY,      // input table
                 scan,             // Scan instance to control CF and attribute selection
                 Map.class,   // mapper class
                 Text.class,             // mapper output key

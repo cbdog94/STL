@@ -1,5 +1,7 @@
 package bean;
 
+import com.graphhopper.util.GPXEntry;
+
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -65,7 +67,13 @@ public class GPS implements Serializable {
 
     @Override
     public String toString() {
+        if (timestamp == null)
+            return "[" + longitude + "," + latitude + "]";
         return "[" + longitude + "," + latitude + "," + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(timestamp) + "]";
+    }
+
+    public GPXEntry convertToGPX() {
+        return new GPXEntry(latitude, longitude, timestamp.getTime());
     }
 
 }

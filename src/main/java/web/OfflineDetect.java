@@ -92,7 +92,7 @@ public class OfflineDetect extends HttpServlet {
         Cell endCell = TileSystem.GPSToTile(endPoint);
 
         //First step，得到经过起止点所有轨迹
-        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell);
+        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell,"SH");
 //        Set<String> allTrajectoryID = TrajectoryUtil.getAllTrajectoryID(startPoint, endPoint);
 //        List<List<Cell>> allTrajectoryCell = TrajectoryUtil.getAllTrajectoryCell(allTrajectoryID);
 

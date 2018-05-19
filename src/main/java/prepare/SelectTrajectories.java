@@ -5,7 +5,6 @@ import bean.GPS;
 import com.google.gson.Gson;
 import hbase.TrajectoryUtil;
 import util.CommonUtil;
-import util.TileSystem;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,22 +40,22 @@ public class SelectTrajectories {
 
     private static void printAllTrajectoryPoints(Cell start, Cell end) {
 
-        Set<String> trajectoryID = TrajectoryUtil.getAllTrajectoryID(start, end);
+        Set<String> trajectoryID = TrajectoryUtil.getAllTrajectoryID(start, end, "SH");
 
-        List<Trajectory> trajectoryList=new ArrayList<>();
+        List<Trajectory> trajectoryList = new ArrayList<>();
 
         for (String trajectoryId : trajectoryID) {
             List<GPS> gpsTrajectory = TrajectoryUtil.getTrajectoryGPSPoints(trajectoryId);
             gpsTrajectory = CommonUtil.removeExtraGPS(gpsTrajectory, start, end);
             if (gpsTrajectory == null)
                 continue;
-            trajectoryList.add(new Trajectory(trajectoryId,new Gson().toJson(gpsTrajectory)));
+            trajectoryList.add(new Trajectory(trajectoryId, new Gson().toJson(gpsTrajectory)));
         }
 
         System.out.println(new Gson().toJson(trajectoryList));
     }
 
-    static class Trajectory{
+    static class Trajectory {
         String id;
         String coords;
 
@@ -65,7 +64,6 @@ public class SelectTrajectories {
             this.coords = coords;
         }
     }
-
 
 
 }

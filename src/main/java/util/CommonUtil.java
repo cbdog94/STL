@@ -2,14 +2,16 @@ package util;
 
 import bean.Cell;
 import bean.GPS;
+import com.beust.jcommander.IParameterValidator;
+import com.beust.jcommander.ParameterException;
 import constant.HBaseConstant;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.io.*;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Common utility
@@ -33,6 +35,15 @@ public class CommonUtil {
      */
     public static double distanceBetween(GPS GPS1, GPS GPS2) {
         return computeDistance(GPS1.getLatitude(), GPS1.getLongitude(), GPS2.getLatitude(), GPS2.getLongitude());
+    }
+
+    /**
+     * @return unit:s
+     */
+    public static double timeBetween(GPS GPS1, GPS GPS2) {
+        if (GPS1.getTimestamp() == null || GPS2.getTimestamp() == null)
+            return -1;
+        return Math.abs(GPS1.getTimestamp().getTime() - GPS2.getTimestamp().getTime()) / 1000;
     }
 
     /**
@@ -171,7 +182,7 @@ public class CommonUtil {
     /**
      * 计算分位数
      */
-    public static double percentile(Double[] data, double p) {
+    public static double percentile(double[] data, double p) {
         int n = data.length;
         Arrays.sort(data);
         double px = p * (n - 1);
@@ -210,8 +221,18 @@ public class CommonUtil {
         return null;
     }
 
-    public static boolean legalInput(String city) {
+    public static boolean isValidCity(String city) {
         return city.equals("SH") || city.equals("SZ") || city.equals("CD");
+    }
+
+    public static class CityValidator implements IParameterValidator {
+        @Override
+        public void validate(String name, String value)
+                throws ParameterException {
+            if (!CommonUtil.isValidCity(value)) {
+                throw new ParameterException("Parameter " + name + " should be 'SH', 'SZ' or 'CD' (found " + value + ")");
+            }
+        }
     }
 
     /**
@@ -238,6 +259,80 @@ public class CommonUtil {
         put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_DISTANCE, Bytes.toBytes(distance));
         return put;
 
+    }
+
+
+    public static void saveObjToFile(Object o, String fileName) {
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName));
+            oos.writeObject(o);
+            oos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public static Object getObjFromFile(String fileName) {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName));
+            return ois.readObject();
+        } catch (ClassNotFoundException | IOException ignored) {
+
+        }
+        return null;
+    }
+
+    public static double[] trajectoryInfo(List<GPS> trajectory, String city) {
+        double distance = 0, totalTime = 0, waitTime = 0;
+        GPS last = trajectory.get(0);
+        for (GPS cur : trajectory) {
+            double segDist = distanceBetween(cur, last);
+            double segTime = timeBetween(cur, last);
+            distance += segDist;
+            //lower than 12Km/h
+            if (segTime > 0 && segDist / segTime < 3.33) {
+                waitTime += segTime;
+            }
+            last = cur;
+        }
+        totalTime = timeBetween(trajectory.get(0), trajectory.get(trajectory.size() - 1));
+        double fare = 0;
+        if (city.equals("SH")) {
+            if (distance <= 3000)
+                fare = 14;
+            else if (distance <= 15000)
+                fare = 14 + 2.5 * (distance / 1000 - 3);
+            else
+                fare = 14 + 30 + 3.6 * (distance / 1000 - 15);
+            fare += Math.floor(waitTime / 60 / 4) * 2.5;
+        }
+        return new double[]{distance, totalTime, fare};
+    }
+
+    public static Set<String> anomalyTrajectory(Map<String, List<GPS>> originTrajectory, String city, boolean debug) {
+        Map<String, Double> fareMap = new HashMap<>();
+        for (Map.Entry<String, List<GPS>> entry : originTrajectory.entrySet()) {
+            fareMap.put(entry.getKey(), trajectoryInfo(entry.getValue(), city)[2]);
+        }
+        double threshold = percentile(fareMap.values().stream().mapToDouble(s -> s).toArray(), 0.95);
+        if (debug) {
+            System.out.println("Fare List: " + fareMap.values());
+            System.out.println("Fare threshold: " + threshold);
+        }
+        return fareMap.entrySet().stream().filter(s -> s.getValue() > threshold).map(Map.Entry::getKey).collect(Collectors.toSet());
+    }
+
+    public static void printResult(int TP, int FP, int FN, int TN) {
+        System.out.println("-----------");
+        System.out.println("TP: " + TP);
+        System.out.println("FP: " + FP);
+        System.out.println("FN: " + FN);
+        System.out.println("TN: " + TN);
+
+        System.out.println("TPR: " + TP * 1.0 / (TP + FN));
+        System.out.println("FPR: " + FP * 1.0 / (FP + TN));
+        System.out.println("-----------");
     }
 
 }
