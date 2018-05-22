@@ -146,22 +146,6 @@ public class CommonUtil {
         return Pattern.compile("\\w{4}-\\w{2}-\\w{2} \\w{2}:\\w{2}:\\w{2}").matcher(timestamp).matches();
     }
 
-    public static List<Cell> removeExtraCell(List<Cell> testTrajectory, Cell startPoint, Cell endPoint) {
-        int startIndex = 0;
-        int endIndex = 0;
-        for (int i = 0; i < testTrajectory.size(); i++) {
-            if (testTrajectory.get(i).equals(startPoint))
-                startIndex = i;
-            else if (testTrajectory.get(i).equals(endPoint))
-                endIndex = i;
-        }
-        try {
-            return testTrajectory.subList(startIndex, endIndex + 1);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     public static List<GPS> removeExtraGPS(List<GPS> gpsTrajectory, Cell start, Cell end) {
         int startIndex = 0;
         int endIndex = 0;
@@ -294,7 +278,7 @@ public class CommonUtil {
     }
 
     public static double[] trajectoryInfo(List<GPS> trajectory, String city) {
-        double distance = 0, totalTime = 0, waitTime = 0;
+        double distance = 0, totalTime, waitTime = 0;
         GPS last = trajectory.get(0);
         for (GPS cur : trajectory) {
             double segDist = distanceBetween(cur, last);
@@ -308,14 +292,34 @@ public class CommonUtil {
         }
         totalTime = timeBetween(trajectory.get(0), trajectory.get(trajectory.size() - 1));
         double fare = 0;
-        if (city.equals("SH")) {
-            if (distance <= 3000)
-                fare = 14;
-            else if (distance <= 15000)
-                fare = 14 + 2.5 * (distance / 1000 - 3);
-            else
-                fare = 14 + 30 + 3.6 * (distance / 1000 - 15);
-            fare += Math.floor(waitTime / 60 / 4) * 2.5;
+        switch (city) {
+            case "SH":
+                if (distance <= 3000)
+                    fare = 14;
+                else if (distance <= 15000)
+                    fare = 14 + 2.5 * (distance / 1000 - 3);
+                else
+                    fare = 14 + 30 + 3.6 * (distance / 1000 - 15);
+                fare += Math.floor(waitTime / 60 / 4) * 2.5;
+                break;
+            case "SZ":
+                if (distance <= 2000)
+                    fare = 11;
+                else if (distance <= 25000)
+                    fare = 11 + 2.4 * (distance / 1000 - 2);
+                else
+                    fare = 11 + 55.2 + 3.12 * (distance / 1000 - 25);
+                fare += Math.floor(waitTime / 60) * 0.8;
+                break;
+            case "CD":
+                if (distance <= 2000)
+                    fare = 8;
+                else if (distance <= 10000)
+                    fare = 8 + 1.9 * (distance / 1000 - 2);
+                else
+                    fare = 8 + 15.2 + 2.85 * (distance / 1000 - 10);
+                fare += Math.floor(waitTime / 60 / 5) * 1.9;
+                break;
         }
         return new double[]{distance, totalTime, fare};
     }

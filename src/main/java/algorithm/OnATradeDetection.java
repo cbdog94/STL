@@ -90,7 +90,7 @@ public class OnATradeDetection {
         ExecutorService exService = Executors.newFixedThreadPool(30);
         for (Map.Entry<String, List<GPS>> trajectory : trajectoryGPS.entrySet()) {
             exService.execute(() -> {
-                MatchResult mr = mm.doWork(trajectory.getValue().stream().map(GPS::convertToGPX).collect(Collectors.toList()));
+                MatchResult mr = mm.doWork(trajectory.getValue().stream().map(s -> s.convertToGPX(city)).collect(Collectors.toList()));
                 List<Section> sections = mr.getEdgeMatches().stream().map(s -> {
                     EdgeIteratorState edge = s.getEdgeState();
                     int edgeID = edge.getEdge();
