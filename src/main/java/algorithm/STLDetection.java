@@ -103,15 +103,19 @@ public class STLDetection {
             wd = MatrixUtils.inverse(XT.multiply(X)).multiply(XT).multiply(D).getColumn(0);
             et = (TT.multiply(T).subtract(TT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wt)))).getEntry(0, 0) / x.length;
             ed = (DT.multiply(D).subtract(DT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wd)))).getEntry(0, 0) / x.length;
-            cacheWT.put(testStartHour, wt);
-            cacheWD.put(testStartHour, wd);
-            cacheET.put(testStartHour, et);
-            cacheED.put(testStartHour, ed);
+            synchronized (STLDetection.class) {
+                cacheWT.put(testStartHour, wt);
+                cacheWD.put(testStartHour, wd);
+                cacheET.put(testStartHour, et);
+                cacheED.put(testStartHour, ed);
+            }
         } else {
-            wt = cacheWT.get(testStartHour);
-            wd = cacheWD.get(testStartHour);
-            et = cacheET.get(testStartHour);
-            ed = cacheED.get(testStartHour);
+            synchronized (STLDetection.class) {
+                wt = cacheWT.get(testStartHour);
+                wd = cacheWD.get(testStartHour);
+                et = cacheET.get(testStartHour);
+                ed = cacheED.get(testStartHour);
+            }
         }
 
         PolynomialFunction polyT = new PolynomialFunction(wt);
