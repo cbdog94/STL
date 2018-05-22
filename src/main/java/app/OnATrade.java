@@ -27,6 +27,11 @@ public class OnATrade {
     @Parameter(names = {"-t"}, description = "The threshold of anomaly.")
     private double threshold = 0.13127;
 
+    @Parameter(names = {"-s"}, description = "Start cell.", validateWith = CommonUtil.CellValidator.class)
+    private String startCell = "[109776,53554]";
+    @Parameter(names = {"-e"}, description = "End cell.", validateWith = CommonUtil.CellValidator.class)
+    private String endCell = "[109873,53574]";
+
 
     public static void main(String... argv) {
         OnATrade main = new OnATrade();
@@ -39,8 +44,8 @@ public class OnATrade {
 
     private void run() {
 
-        Cell startCell = DetectConstant.startPoint;
-        Cell endCell = DetectConstant.endPoint;
+        Cell startCell = new Cell(this.startCell);
+        Cell endCell = new Cell(this.endCell);
 
         OnATradeDetection onATradeDetection = new OnATradeDetection(debug);
         // Origin trajectory.

@@ -235,6 +235,16 @@ public class CommonUtil {
         }
     }
 
+    public static class CellValidator implements IParameterValidator {
+        @Override
+        public void validate(String name, String value)
+                throws ParameterException {
+            if (!Pattern.matches("\\[\\d+,\\d+]", value)) {
+                throw new ParameterException("Parameter " + name + " should be [****,****].");
+            }
+        }
+    }
+
     /**
      * Map the GPS trajectory to Cell trajectory, and convert the form of data so that it can be inserted into HBase.
      */

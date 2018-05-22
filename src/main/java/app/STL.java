@@ -7,7 +7,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import constant.DetectConstant;
 import hbase.TrajectoryUtil;
 import util.CommonUtil;
 
@@ -30,6 +29,11 @@ public class STL {
     @Parameter(names = {"-tD"}, description = "Threshold of distance.")
     private double thresholdDist = 0.7;
 
+    @Parameter(names = {"-s"}, description = "Start cell.", validateWith = CommonUtil.CellValidator.class)
+    private String startCell = "[109776,53554]";
+    @Parameter(names = {"-e"}, description = "End cell.", validateWith = CommonUtil.CellValidator.class)
+    private String endCell = "[109873,53574]";
+
     public static void main(String... argv) {
         STL main = new STL();
         JCommander.newBuilder()
@@ -41,8 +45,8 @@ public class STL {
 
     private void run() {
 
-        Cell startCell = DetectConstant.startPoint;
-        Cell endCell = DetectConstant.endPoint;
+        Cell startCell = new Cell(this.startCell);
+        Cell endCell = new Cell(this.endCell);
 
         // Origin trajectory.
         Map<String, List<GPS>> trajectoryGPS = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, city);

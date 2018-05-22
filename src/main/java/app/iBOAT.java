@@ -7,7 +7,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import constant.DetectConstant;
 import hbase.TrajectoryUtil;
 import util.CommonUtil;
 
@@ -28,6 +27,11 @@ public class iBOAT {
     @Parameter(names = {"-t"}, description = "Threshold.")
     private double threshold = 0.04;
 
+    @Parameter(names = {"-s"}, description = "Start cell.", validateWith = CommonUtil.CellValidator.class)
+    private String startCell = "[109776,53554]";
+    @Parameter(names = {"-e"}, description = "End cell.", validateWith = CommonUtil.CellValidator.class)
+    private String endCell = "[109873,53574]";
+
     public static void main(String... argv) {
         iBOAT main = new iBOAT();
         JCommander.newBuilder()
@@ -39,8 +43,8 @@ public class iBOAT {
 
     private void run() {
 
-        Cell startCell = DetectConstant.startPoint;
-        Cell endCell = DetectConstant.endPoint;
+        Cell startCell = new Cell(this.startCell);
+        Cell endCell = new Cell(this.endCell);
 
         // GPS trajectory.
         Map<String, List<GPS>> trajectoryGPS = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, city);
