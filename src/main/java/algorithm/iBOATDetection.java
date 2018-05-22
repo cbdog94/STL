@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class iBOATDetection {
 
-    public static double threshold = 0.04;
+    private static double threshold = 0.04;
 
     public static double iBOAT(List<GPS> testTrajectory, List<List<Cell>> allTrajectories) {
         return iBOAT(testTrajectory, allTrajectories, threshold);

@@ -4,7 +4,9 @@ import bean.Cell;
 import bean.GPS;
 
 /**
- * Created by cbdog94 on 17-3-8.
+ * The implementation of Mercator projection
+ *
+ * @see <a href="https://msdn.microsoft.com/en-us/library/bb259689.aspx">Bing Maps Tile System</a>
  */
 public class TileSystem {
     private static final double EARTH_RADIUS = 6378137;
@@ -232,21 +234,5 @@ public class TileSystem {
         return new int[]{tileX, tileY, levelOfDetail};
     }
 
-    public static void main(String[] args) {
-        int[] tileXY = latLongToTileXY(31.23607, 121.50878);
-        int[] tileXY2 = latLongToTileXY(31.21584,121.55732);
-        System.out.println(tileXY[0] + "," + tileXY[1]);
-        System.out.println(tileXY2[0] + "," + tileXY2[1]);
-        tileXY = latLongToTileXY(31.20641,121.59598);
-        tileXY2 = latLongToTileXY(31.24773,121.44903);
-        System.out.println(tileXY[0] + "," + tileXY[1]);
-        System.out.println(tileXY2[0] + "," + tileXY2[1]);
-
-        //31.2360,121.5088陆家嘴
-        //31.15917,121.42454上海南
-
-        //31.20641,121.59598张江
-        //31.24800,121.45275上海站
-    }
 }
 

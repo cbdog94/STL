@@ -7,8 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * GridUtil mainly used for pre-process GPS,
- * specifically gridding the GPS point.
+ * GridUtil mainly used for meshing the GPS trajectory.
  *
  * @author Bin Cheng
  */
@@ -34,10 +33,7 @@ public class GridUtil {
             Cell currentCell = TileSystem.GPSToTile(gpsList.get(i));
             //cellList should't have duplicate tiles
             if (!lastCell.equals(currentCell)) {
-//                if (!isTilesAdjacent(lastCell, currentCell)) {
                 cellList.addAll(addVirtualTiles(lastCell, currentCell));
-//                }
-//                cellList.add(currentCell);
             }
 
             lastCell = currentCell;
@@ -77,17 +73,4 @@ public class GridUtil {
         return virtualList;
     }
 
-//    private static boolean isTilesAdjacent(Cell lastTile, Cell currentTile) {
-//        return Math.abs(lastTile.getTileX() - currentTile.getTileX()) <= 1
-//                || Math.abs(lastTile.getTileY() - currentTile.getTileY()) <= 1;
-//    }
-
-//    public static void main(String[] args) {
-//        System.out.println(addVirtualTiles(new Cell(1, 1), new Cell(1, 1)).toString());
-//        System.out.println(addVirtualTiles(new Cell(1, 1), new Cell(1, 4)).toString());
-//        System.out.println(addVirtualTiles(new Cell(1, 1), new Cell(5, 7)).toString());
-//        System.out.println(addVirtualTiles(new Cell(7, 7), new Cell(4, 4)).toString());
-//        System.out.println(addVirtualTiles(new Cell(7, 1), new Cell(4, 4)).toString());
-//        System.out.println(addVirtualTiles(new Cell(1, 6), new Cell(7, 6)).toString());
-//    }
 }

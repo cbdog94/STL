@@ -24,7 +24,6 @@ public class iBATDetection {
     public static double iBAT(List<Cell> testTrajectory, List<List<Cell>> allTrajectories, int numOfTrials, int subSampleSize) {
         int[] numOfIsolation = new int[numOfTrials];
         int limit = (int) Math.ceil(Math.log(subSampleSize) / Math.log(2));
-//        System.out.println("limit: "+ limit);
         List<Cell> shuffledTrajectory = new ArrayList<>(testTrajectory);
 
         for (int i = 0; i < numOfTrials; i++) {
@@ -33,31 +32,13 @@ public class iBATDetection {
             for (Cell cell : shuffledTrajectory) {
                 numOfIsolation[i]++;
                 subSampleTrajectories.removeIf(trajectory -> !trajectory.contains(cell));
-//                if (subSampleTrajectories.isEmpty())
-//                    break;
                 if (subSampleTrajectories.size() < limit)
                     break;
-//                if(numOfIsolation[i] > limit)
-//                    break;
             }
-//            while (subSampleTrajectories.size() != 0 && numOfIsolation[i] < limit) {
-//                numOfIsolation[i]++;
-//                Cell randomCell = getRandomTile(testTrajectory);
-//                subSampleTrajectories.removeIf(trajectory -> !trajectory.contains(randomCell));
-//            }
         }
-//        for (int i : numOfIsolation)
-//            System.out.println(i);
         return anomalyScore(numOfIsolation, subSampleSize);
     }
 
-
-    /**
-     * Randomly select a Cell from the testTrajectory.
-     */
-    private static Cell getRandomTile(List<Cell> testTrajectory) {
-        return testTrajectory.get(random.nextInt(testTrajectory.size()));
-    }
 
     /**
      * Get a sub-sample trajectories set from all the trajectories.
@@ -98,7 +79,6 @@ public class iBATDetection {
         }
         average = sum * 1.0 / numOfIsolation.length;
         double cN = 2 * (Math.log(subSampleSize - 1) + 0.57721566) - 2.0 * (subSampleSize - 1) / subSampleSize;
-//        System.out.println(cN);
         return Math.pow(2, -average / cN);
     }
 }
