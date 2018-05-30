@@ -6,7 +6,7 @@
     <!-- 引入 echarts.js -->
     <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript"
-            src="https://api.map.baidu.com/api?v=2.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+            src="https://api.map.baidu.com/api?v=3.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
     <script src="https://cdn.bootcss.com/echarts/4.0.2/echarts.js"></script>
     <script src="https://cdn.bootcss.com/echarts/4.0.2/extension/bmap.js"></script>
     <script src="tool.js"></script>
@@ -25,7 +25,7 @@
     function getQueryString(name) {
         var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
         var r = window.location.search.substr(1).match(reg);
-        if (r != null)return unescape(r[2]);
+        if (r != null) return unescape(r[2]);
         return null;
     }
 
@@ -55,6 +55,11 @@
             } else {
                 document.title = "DTM检测结果";
             }
+            if (getQueryString("id") != null)
+                data = data.filter(function (track, index) {
+                    if (track.taxiId === getQueryString("id"))
+                        return track;
+                });
             var lines = data.map(function (track, index) {
                 track.normal ? normal++ : anomaly++;
                 return {
@@ -151,22 +156,23 @@
 
                 }]
             });
-                myChart.on('click', function (params) {
-                    // 控制台打印数据的名称
-                    console.log(params.name);
-                      var newData=[];
-                    for(var i=0;i<lines.length;i++){
-                        //console.log(lines.name)
-                        if(lines[i].name!=params.name){
-                            newData.push(lines[i]);
-                        }
+            myChart.on('click', function (params) {
+                // 控制台打印数据的名称
+                console.log(params.name);
+                var newData = [];
+                for (var i = 0; i < lines.length; i++) {
+                    //console.log(lines.name)
+                    if (lines[i].name != params.name) {
+                        newData.push(lines[i]);
                     }
-                    lines=newData;
-                    myChart.setOption(option = {
-                        series: [{
-                        data: lines}]
-                    });
+                }
+                lines = newData;
+                myChart.setOption(option = {
+                    series: [{
+                        data: lines
+                    }]
                 });
+            });
         }
     });
 </script>

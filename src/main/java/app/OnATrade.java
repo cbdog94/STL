@@ -8,7 +8,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import constant.DetectConstant;
 import hbase.TrajectoryUtil;
 import util.CommonUtil;
 
@@ -61,10 +60,15 @@ public class OnATrade {
         trajectoryGPS = Maps.filterKeys(trajectoryGPS, absTrajectory::containsKey);
         // Label.
         Set<String> anomalyTrajectory = CommonUtil.anomalyTrajectory(trajectoryGPS, city, debug);
+
+//        05bbf71fdaf54c3e81c76e548f460f58
+
+        long start = System.currentTimeMillis();
         // Detection.
         Set<String> onATradeTrajectory = absTrajectory.entrySet().parallelStream()
                 .filter(s -> onATradeDetection.detection(s.getValue(), recommendTrajectory, threshold) > 0.1)
                 .map(Map.Entry::getKey).collect(Collectors.toSet());
+        long end = System.currentTimeMillis();
 
         // Evaluation.
         int TP = Sets.intersection(anomalyTrajectory, onATradeTrajectory).size();
@@ -73,6 +77,9 @@ public class OnATrade {
         int TN = trajectoryGPS.size() - anomalyTrajectory.size() - FP;
 
         CommonUtil.printResult(TP, FP, FN, TN);
+
+        System.out.println("Pre Time: " + (end - start) * 1.0 / trajectoryGPS.size() / 1000);
+
     }
 
 

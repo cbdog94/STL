@@ -141,7 +141,7 @@ public class STLDetection {
             if (cdfT > thresholdTime && cdfD > thresholdDist)
                 anomalyPoints.add(gps);
 
-            anomalyScore += segment / (1 + Math.exp(200 * Math.max(thresholdTime - cdfT, thresholdDist - cdfD)));
+            anomalyScore += segment / (1 + Math.exp(100 * Math.max(thresholdTime - cdfT, thresholdDist - cdfD)));
 
             lastPos = gps;
         }
