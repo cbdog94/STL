@@ -8,7 +8,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import constant.DetectConstant;
 import hbase.TrajectoryUtil;
 import util.CommonUtil;
 

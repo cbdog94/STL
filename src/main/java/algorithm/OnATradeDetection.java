@@ -145,7 +145,10 @@ public class OnATradeDetection {
             }
             // Export the recommend trajectory.
             if (debug) {
-                debugGPXFileMap.get(entry.getKey()).doExport("debug/" + entry.getKey() + ".gpx");
+                try {
+                    debugGPXFileMap.get(entry.getKey()).doExport("debug/" + entry.getKey() + ".gpx");
+                } catch (NullPointerException ignored) {
+                }
             }
         }
         return result;
