@@ -70,12 +70,12 @@ public class iBOAT {
         long end = System.currentTimeMillis();
 
         // Evaluation.
-        int TP = Sets.intersection(anomalyTrajectory, iBOATAnomaly).size();
-        int FP = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), iBOATAnomaly).size();
-        int FN = anomalyTrajectory.size() - TP;
-        int TN = trajectoryGPS.size() - anomalyTrajectory.size() - FP;
+        int tp = Sets.intersection(anomalyTrajectory, iBOATAnomaly).size();
+        int fp = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), iBOATAnomaly).size();
+        int fn = anomalyTrajectory.size() - tp;
+        int tn = trajectoryGPS.size() - anomalyTrajectory.size() - fp;
 
-        CommonUtil.printResult(TP, FP, FN, TN);
+        CommonUtil.printResult(tp, fp, fn, tn);
 
         System.out.println("Pre Time: " + (end - start) * 1.0 / trajectoryGPS.size() / 1000);
 

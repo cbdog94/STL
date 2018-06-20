@@ -36,6 +36,8 @@ import java.io.IOException;
  */
 public class HotSpot {
 
+    private static final String START = "start";
+
 
     public static class Map extends TableMapper<Text, IntWritable> {
 
@@ -46,11 +48,11 @@ public class HotSpot {
         @Override
         public void map(ImmutableBytesWritable row, Result value, Context context) throws InterruptedException, IOException {
 
-            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_CELL));
+            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes("UTF-8"), HBaseConstant.COLUMN_CELL.getBytes("UTF-8")));
 
             String[] tiles = trajectory.substring(1, trajectory.length() - 1).split(", ");
 
-            if (context.getConfiguration().getBoolean("start", true)) {
+            if (context.getConfiguration().getBoolean(START, true)) {
                 cell = new Cell(tiles[0]);
             } else {
                 cell = new Cell(tiles[tiles.length - 1]);
@@ -83,7 +85,7 @@ public class HotSpot {
         @Override
         public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             for (Text val : values) {
-                gps = TileSystem.TileToGPS(new Cell(val.toString()));
+                gps = TileSystem.tileToGPS(new Cell(val.toString()));
                 outputKey.set(val + "\t" + gps);
                 context.write(outputKey, key);
             }
@@ -110,23 +112,17 @@ public class HotSpot {
         Path tempPath = new Path("/hotspot_tmp");
         Path result = new Path(outputPath);
         Configuration config = HBaseConfiguration.create();
-        config.setBoolean("start", start);
+        config.setBoolean(START, start);
 
-        //job
+
         Job job = Job.getInstance(config, city + (start ? " Start" : " End") + " HotSpot");
-        job.setJarByClass(HotSpot.class);    // class that contains mapper
+        job.setJarByClass(HotSpot.class);
 
         Scan scan = new Scan();
-        scan.setCaching(1000);        // 1 is the default in Scan, which will be bad for MapReduce jobs
-        scan.setCacheBlocks(false);  // don't set to true for MR jobs
+        scan.setCaching(1000);
+        scan.setCacheBlocks(false);
 
-        TableMapReduceUtil.initTableMapperJob(
-                CommonUtil.getTrajectoryTable(city),      // input table
-                scan,             // Scan instance to control CF and attribute selection
-                Map.class,   // mapper class
-                Text.class,             // mapper output key
-                IntWritable.class,             // mapper output value
-                job);
+        TableMapReduceUtil.initTableMapperJob(CommonUtil.getTrajectoryTable(city), scan, Map.class, Text.class, IntWritable.class, job);
         job.setReducerClass(Reduce.class);
         FileOutputFormat.setOutputPath(job, tempPath);
         job.setOutputKeyClass(Text.class);
@@ -146,7 +142,6 @@ public class HotSpot {
         jobSort.setReducerClass(ReduceSort.class);
         jobSort.setOutputKeyClass(Text.class);
         jobSort.setOutputValueClass(IntWritable.class);
-//        FileSystem.get(config).delete(result, true);
         FileOutputFormat.setOutputPath(jobSort, result);
         jobSort.waitForCompletion(true);
 

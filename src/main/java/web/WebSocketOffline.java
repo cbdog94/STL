@@ -11,11 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SocketServer
+ * @author Bin Cheng
  */
 @ServerEndpoint("/offline")
 public class WebSocketOffline {
 
-    private static final Map<String, WebSocketOffline> connections = new ConcurrentHashMap<>();
+    private static  Map<String, WebSocketOffline> CONNECTIONS = new ConcurrentHashMap<>();
 
     private Session session;
 
@@ -37,7 +38,7 @@ public class WebSocketOffline {
     @OnMessage
     public void onMessage(String message) {
         System.out.println(message);
-        connections.put(message, this);
+        CONNECTIONS.put(message, this);
 //        try {
 //            session.getBasicRemote().sendText(message);
 //        } catch (IOException e) {
@@ -53,7 +54,7 @@ public class WebSocketOffline {
     public static void sendMessage(String id, String message) {
 
         try {
-            connections.get(id).session.getBasicRemote().sendText(message);
+            CONNECTIONS.get(id).session.getBasicRemote().sendText(message);
         } catch (IOException e) {
             e.printStackTrace();
         }

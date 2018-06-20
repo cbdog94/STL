@@ -1,4 +1,4 @@
-package algorithm.OnATrade;
+package algorithm.onatrade;
 
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
 import org.openstreetmap.osmosis.core.container.v0_6.WayContainer;
@@ -9,6 +9,11 @@ import org.openstreetmap.osmosis.core.task.v0_6.Sink;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * {@link OsmReaderWithHighway} is used to save the map from wayID to its name.
+ *
+ * @author Bin Cheng
+ */
 public class OsmReaderWithHighway implements Sink {
 
     private Map<Long, String> highway = new HashMap<>();

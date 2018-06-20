@@ -1,4 +1,4 @@
-package algorithm.OnATrade;
+package algorithm.onatrade;
 
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
@@ -13,12 +13,17 @@ import com.graphhopper.util.BitUtil;
 
 import java.util.List;
 
+
 /**
+ * {@link GraphHopperWithHighway} is used to save the map from edge ID to OSM way ID.
+ *
  * @author Peter Karich
  */
 public class GraphHopperWithHighway extends GraphHopper {
 
-    // mapping of internal edge ID to OSM way ID
+    /**
+     * mapping of internal edge ID to OSM way ID
+     */
     private DataAccess edgeMapping;
     private BitUtil bitUtil;
 

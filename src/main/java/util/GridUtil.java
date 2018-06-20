@@ -23,16 +23,17 @@ public class GridUtil {
     public static List<Cell> gridGPSSequence(List<GPS> gpsList) {
 
         List<Cell> cellList = new ArrayList<>();
-        if (gpsList == null || gpsList.size() == 0)
+        if (gpsList == null || gpsList.size() == 0) {
             return cellList;
+        }
 
-        Cell lastCell = TileSystem.GPSToTile(gpsList.get(0));
+        Cell lastCell = TileSystem.gpsToTile(gpsList.get(0));
         cellList.add(lastCell);
         //TODO 可能存在漂移的点，需要过滤掉
         for (int i = 1; i < gpsList.size(); i++) {
-            Cell currentCell = TileSystem.GPSToTile(gpsList.get(i));
+            Cell currentCell = TileSystem.gpsToTile(gpsList.get(i));
             //cellList should't have duplicate tiles
-            if (!lastCell.equals(currentCell)) {
+            if (!TileSystem.equal(lastCell,currentCell)) {
                 cellList.addAll(addVirtualTiles(lastCell, currentCell));
             }
 
@@ -60,14 +61,16 @@ public class GridUtil {
         while (tmpX != endX || tmpY != endY) {
             int gradientX = endX - tmpX;
             int gradientY = endY - tmpY;
-            if (gradientX > 0)
+            if (gradientX > 0) {
                 tmpX++;
-            else if (gradientX < 0)
+            } else if (gradientX < 0) {
                 tmpX--;
-            if (gradientY > 0)
+            }
+            if (gradientY > 0) {
                 tmpY++;
-            else if (gradientY < 0)
+            } else if (gradientY < 0) {
                 tmpY--;
+            }
             virtualList.add(new Cell(tmpX, tmpY));
         }
         return virtualList;

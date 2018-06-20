@@ -6,6 +6,7 @@ import bean.GPS;
 /**
  * The implementation of Mercator projection
  *
+ * @author Bin Cheng
  * @see <a href="https://msdn.microsoft.com/en-us/library/bb259689.aspx">Bing Maps Tile System</a>
  */
 public class TileSystem {
@@ -159,16 +160,16 @@ public class TileSystem {
     }
 
 
-    public static Cell GPSToTile(GPS GPSPoint) {
-        int[] pixelXY = latLongToPixelXY(GPSPoint.getLatitude(), GPSPoint.getLongitude(), DEFAULT_LEVEL);
+    public static Cell gpsToTile(GPS gpsPoint) {
+        int[] pixelXY = latLongToPixelXY(gpsPoint.getLatitude(), gpsPoint.getLongitude(), DEFAULT_LEVEL);
         int[] tileXY = pixelXYToTileXY(pixelXY[0], pixelXY[1]);
         return new Cell(tileXY[0], tileXY[1]);
     }
 
-    public static GPS TileToGPS(Cell cell) {
+    public static GPS tileToGPS(Cell cell) {
         int[] pixelXY = tileXYToPixelXY(cell.getTileX(), cell.getTileY());
-        double[] GPSXY = pixelXYToLatLong(pixelXY[0], pixelXY[1], DEFAULT_LEVEL);
-        return new GPS(GPSXY[0], GPSXY[1], null);
+        double[] gpsXY = pixelXYToLatLong(pixelXY[0], pixelXY[1], DEFAULT_LEVEL);
+        return new GPS(gpsXY[0], gpsXY[1]);
     }
 
 
@@ -234,5 +235,8 @@ public class TileSystem {
         return new int[]{tileX, tileY, levelOfDetail};
     }
 
+    public static boolean equal(Cell a, Cell b) {
+        return a.getTileX() == b.getTileX() && a.getTileY() == b.getTileY();
+    }
 }
 

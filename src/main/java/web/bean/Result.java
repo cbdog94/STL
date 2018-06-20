@@ -1,12 +1,15 @@
 package web.bean;
 
 /**
- * Created by cbdog94 on 2017/4/8.
+ *
+ * @author Bin Cheng
+ * @date 2017/4/8
  */
 public class Result {
+
     private int code;
+
     private String msg;
-//    private Object data;
 
     public int getCode() {
         return code;
@@ -24,11 +27,4 @@ public class Result {
         this.msg = msg;
     }
 
-//    public Object getData() {
-//        return data;
-//    }
-//
-//    public void setData(Object data) {
-//        this.data = data;
-//    }
 }

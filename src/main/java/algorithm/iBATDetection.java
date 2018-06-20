@@ -1,6 +1,7 @@
 package algorithm;
 
 import bean.Cell;
+import util.TileSystem;
 
 import java.util.*;
 
@@ -14,7 +15,7 @@ public class iBATDetection {
     private static Random random = new Random();
 
     /**
-     * Using the iBAT algorithm to detecting anomaly trajectory.
+     * The implementation of iBAT.
      *
      * @param testTrajectory  the trajectory waiting for detection
      * @param allTrajectories all the trajectories that have the same start cell and the end cell as the <b>testTrajectory</b>
@@ -31,9 +32,17 @@ public class iBATDetection {
             List<List<Cell>> subSampleTrajectories = getSubSampleTrajectories(subSampleSize, allTrajectories);
             for (Cell cell : shuffledTrajectory) {
                 numOfIsolation[i]++;
-                subSampleTrajectories.removeIf(trajectory -> !trajectory.contains(cell));
-                if (subSampleTrajectories.size() < limit)
+                subSampleTrajectories.removeIf(trajectory -> {
+                    for (Cell oneCell : trajectory) {
+                        if (TileSystem.equal(oneCell, cell)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+                if (subSampleTrajectories.size() < limit) {
                     break;
+                }
             }
         }
         return anomalyScore(numOfIsolation, subSampleSize);
@@ -45,8 +54,9 @@ public class iBATDetection {
      */
     private static List<List<Cell>> getSubSampleTrajectories(int subSampleSize, List<List<Cell>> allTrajectories) {
         List<List<Cell>> subSampleTrajectories = new ArrayList<>();
-        if (allTrajectories == null || allTrajectories.size() == 0)
+        if (allTrajectories == null || allTrajectories.size() == 0) {
             return subSampleTrajectories;
+        }
 
         int allTrajectoriesSize = allTrajectories.size();
 
@@ -61,7 +71,9 @@ public class iBATDetection {
         int temp;
         for (int i = 0; i < subSampleSize; i++) {
             //Check whether the trajectory which the index is temp has been chosen.
-            while (storeUsedIndex.contains(temp = random.nextInt(allTrajectoriesSize))) ;
+            while (storeUsedIndex.contains(temp = random.nextInt(allTrajectoriesSize))) {
+
+            }
             storeUsedIndex.add(temp);
             subSampleTrajectories.add(allTrajectories.get(temp));
         }

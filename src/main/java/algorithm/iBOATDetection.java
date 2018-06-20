@@ -23,12 +23,12 @@ public class iBOATDetection {
     }
 
     /**
-     * iBOAT检测算法
+     * The offline implementation of iBOAT.
      *
-     * @param testTrajectory  待检测的轨迹
-     * @param allTrajectories 经过起止点所有历史轨迹集合
-     * @param threshold       阈值
-     * @return 异常点占整个轨迹的百分比
+     * @param testTrajectory  Testing trajectory
+     * @param allTrajectories All historical trajectories
+     * @param threshold       threshold of support ratio
+     * @return the proportion of anomalous points
      */
     public static double iBOAT(List<GPS> testTrajectory, List<List<Cell>> allTrajectories, double threshold) {
         List<Cell> anomalyCells = new ArrayList<>();
@@ -39,9 +39,10 @@ public class iBOATDetection {
         int cellNum = 0;
 
         for (int i = 0; i < testTrajectory.size(); i++) {
-            Cell cell = TileSystem.GPSToTile(testTrajectory.get(i));
-            if (cell.equals(TileSystem.GPSToTile(testTrajectory.get(lastPosition))))
+            Cell cell = TileSystem.gpsToTile(testTrajectory.get(i));
+            if (TileSystem.equal(cell,TileSystem.gpsToTile(testTrajectory.get(lastPosition)))) {
                 continue;
+            }
             cellNum++;
 
             adaptiveWindow.add(cell);
@@ -64,14 +65,18 @@ public class iBOATDetection {
         return anomalyCells.size() * 1.0 / cellNum;
     }
 
-    private static List<Cell> anomalyCells;//= new ArrayList<>();
-    private static List<List<Cell>> supportTrajectories;// = new ArrayList<>(allTrajectories);
-    private static List<Cell> adaptiveWindow;//= new ArrayList<>();
+    private static List<Cell> anomalyCells;
+    private static List<List<Cell>> supportTrajectories;
+    private static List<Cell> adaptiveWindow;
     private static List<List<Cell>> allTrajectories;
     private static double score = 0.0;
     private static GPS lastGPS;
     private static GPS endGPS;
 
+    private static final int NORMAL = 0;
+    private static final int ANOMALY = 1;
+    private static final int IGNORE = 2;
+    private static final int FINISHED = 3;
 
     /**
      * @return 0 normal, 1 anomaly, 2 ignore, 3 finished
@@ -82,13 +87,13 @@ public class iBOATDetection {
 
         epilog(id);
 
-        Cell cell = TileSystem.GPSToTile(gps);
+        Cell cell = TileSystem.gpsToTile(gps);
 
-        if (cell.equals(TileSystem.GPSToTile(endGPS))) {
-            result.code = 3;
+        if (TileSystem.equal(cell,TileSystem.gpsToTile(endGPS))) {
+            result.code = FINISHED;
             return result;
-        } else if (cell.equals(TileSystem.GPSToTile(lastGPS))) {
-            result.code = 2;
+        } else if (TileSystem.equal(cell,TileSystem.gpsToTile(lastGPS))) {
+            result.code = IGNORE;
             return result;
         }
 
@@ -118,7 +123,7 @@ public class iBOATDetection {
         lastGPS = gps;
         prolog(id);
 
-        result.code = anomaly ? 1 : 0;
+        result.code = anomaly ? ANOMALY : NORMAL;
         result.lastSupportSize = lastSupportSize;
         result.currentSupportSize = supportTrajectories.size();
         result.support = support;
@@ -126,7 +131,9 @@ public class iBOATDetection {
 
     }
 
-    //恢复现场
+    /**
+     * 恢复现场
+     */
     private static void epilog(String id) {
         anomalyCells = OnlineDetect.anomalyCells.get(id);
         supportTrajectories = OnlineDetect.supportTrajectories.get(id);
@@ -137,12 +144,13 @@ public class iBOATDetection {
         endGPS = OnlineDetect.ends.get(id);
     }
 
-    //保护现场
+    /**
+     * 保护现场
+     */
     private static void prolog(String id) {
         OnlineDetect.anomalyCells.put(id, anomalyCells);
         OnlineDetect.supportTrajectories.put(id, supportTrajectories);
         OnlineDetect.adaptiveWindow.put(id, adaptiveWindow);
-//        Detect.allTrajectories.put(id, allTrajectories);
         OnlineDetect.score.put(id, score);
         OnlineDetect.lastGPS.put(id, lastGPS);
     }
@@ -153,14 +161,15 @@ public class iBOATDetection {
         for (Cell cell : testPath) {
             search = false;
             for (int i = index + 1; i < samplePath.size(); i++) {
-                if (samplePath.get(i).equals(cell)) {
+                if (TileSystem.equal(samplePath.get(i),cell)) {
                     index = i;
                     search = true;
                     break;
                 }
             }
-            if (!search)
+            if (!search) {
                 return false;
+            }
         }
         return true;
     }

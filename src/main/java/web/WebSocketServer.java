@@ -11,11 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SocketServer
+ *
+ * @author Bin Cheng
  */
 @ServerEndpoint("/init")
 public class WebSocketServer {
 
-    private static final Map<String, WebSocketServer> connections = new ConcurrentHashMap<>();
+    private static Map<String, WebSocketServer> CONNECTIONS = new ConcurrentHashMap<>();
 
     private Session session;
 
@@ -37,7 +39,7 @@ public class WebSocketServer {
     @OnMessage
     public void onMessage(String message) {
         System.out.println(message);
-        connections.put(message, this);
+        CONNECTIONS.put(message, this);
 //        try {
 //            session.getBasicRemote().sendText(message);
 //        } catch (IOException e) {
@@ -53,7 +55,7 @@ public class WebSocketServer {
     public static void sendMessage(String id, String message) {
 
         try {
-            connections.get(id).session.getBasicRemote().sendText(message);
+            CONNECTIONS.get(id).session.getBasicRemote().sendText(message);
         } catch (IOException e) {
             e.printStackTrace();
         }

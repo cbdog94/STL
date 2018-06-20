@@ -15,13 +15,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Created by cbdog94 on 17-3-17.
+ * Provide HBase API.
+ *
+ * @author Bin Cheng
  */
 public class HBaseUtil {
 
-    private static Connection connection;
+    private Connection connection;
 
-    public HBaseUtil() {
+     HBaseUtil() {
         try {
             Configuration conf = HBaseConfiguration.create();
             conf.set("hbase.zookeeper.quorum", HBaseConstant.ZOOKEEPER_HOST);
@@ -31,11 +33,6 @@ public class HBaseUtil {
             e.printStackTrace();
         }
     }
-
-    public Connection getConnection() {
-        return connection;
-    }
-
 
     public String getColumnFromHBase(String tableName, byte[] rowKey, byte[] columnFamily, byte[] column) {
         try {
@@ -52,21 +49,12 @@ public class HBaseUtil {
         try {
             Table table = connection.getTable(TableName.valueOf(tableName));
             List<Get> getList = rowKeys.stream().map(Get::new).collect(Collectors.toList());
-//            List<Get> getList = new ArrayList<>();
-//            for (byte[] rowKey : rowKeys) {
-//                getList.add(new Get(rowKey));
-//            }
             Result[] resultCells = table.get(getList);
-            Map<String, String> map = new HashMap<>();
+            Map<String, String> map = new HashMap<>(resultCells.length);
             for (Result resultCell : resultCells) {
                 map.put(Bytes.toString(resultCell.getRow()), Bytes.toString(resultCell.getValue(columnFamily, column)));
             }
-            //            List<String> resultString = new ArrayList<>();
-//            for (Result resultCell : resultCells) {
-//                resultString.add(Bytes.toString(resultCell.getValue(columnFamily, column)));
-//            }
             return map;
-//            return Arrays.stream(resultCells).map(s -> Bytes.toString(s.getValue(columnFamily, column))).collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -74,7 +62,7 @@ public class HBaseUtil {
     }
 
     public Map<String, String> getColumnFamilyFromHBase(String tableName, byte[] rowKey, byte[] columnFamily) {
-        Map<String, String> resultMap = new HashMap<>();
+        Map<String, String> resultMap = new HashMap<>(16);
         try {
             Table table = connection.getTable(TableName.valueOf(tableName));
             Result resultCell = table.get(new Get(rowKey).addFamily(columnFamily));
@@ -89,10 +77,11 @@ public class HBaseUtil {
         return resultMap;
     }
 
-    public static void close() {
+    public void close() {
         try {
-            if (connection != null)
+            if (connection != null) {
                 connection.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

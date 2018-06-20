@@ -1,6 +1,7 @@
 package bean;
 
 import com.graphhopper.util.GPXEntry;
+import constant.CommonConstant;
 
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
@@ -36,27 +37,34 @@ public class GPS implements Serializable {
     }
 
     public Date getTimestamp() {
-        return timestamp;
+        return (Date) timestamp.clone();
     }
 
     public void setTimestamp(Date timestamp) {
-        this.timestamp = timestamp;
+        this.timestamp = (Date) timestamp.clone();
+    }
+
+    public GPS(double latitude, double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.timestamp = null;
     }
 
     public GPS(double latitude, double longitude, Date timestamp) {
         this.latitude = latitude;
         this.longitude = longitude;
-        this.timestamp = timestamp;
+        this.timestamp = (Date) timestamp.clone();
     }
 
     /***
-     * @param GPS eg:[121.534707,31.259012,2014-01-01 22:22:22]
+     * @param gps eg:[121.534707,31.259012,2014-01-01 22:22:22]
      */
-    public GPS(String GPS) {
+    public GPS(String gps) {
         try {
-            Matcher matcher = Pattern.compile("\\[([\\w|.]+),([\\w|.]+),(\\w{4}-\\w{2}-\\w{2} \\w{2}:\\w{2}:\\w{2})]").matcher(GPS);
-            if (!matcher.lookingAt())
+            Matcher matcher = Pattern.compile("\\[([\\w|.]+),([\\w|.]+),(\\w{4}-\\w{2}-\\w{2} \\w{2}:\\w{2}:\\w{2})]").matcher(gps);
+            if (!matcher.lookingAt()) {
                 return;
+            }
             this.longitude = Double.parseDouble(matcher.group(1));
             this.latitude = Double.parseDouble(matcher.group(2));
             this.timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(matcher.group(3));
@@ -67,13 +75,14 @@ public class GPS implements Serializable {
 
     @Override
     public String toString() {
-        if (timestamp == null)
+        if (timestamp == null) {
             return "[" + longitude + "," + latitude + "]";
+        }
         return "[" + longitude + "," + latitude + "," + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(timestamp) + "]";
     }
 
     public GPXEntry convertToGPX(String city) {
-        if (city.equals("CD")) {
+        if (CommonConstant.CHENGDU.equals(city)) {
             double[] wgsGPS = gcj2wgs(latitude, longitude);
             return new GPXEntry(wgsGPS[0], wgsGPS[1], timestamp.getTime());
 

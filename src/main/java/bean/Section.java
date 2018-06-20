@@ -2,6 +2,11 @@ package bean;
 
 import java.io.Serializable;
 
+/**
+ * Section consists of segments corresponding to the way in OpenStreetMap.
+ *
+ * @author Bin Cheng
+ */
 public class Section implements Serializable {
 
     private int internalId;

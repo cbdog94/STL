@@ -3,11 +3,10 @@ package web;
 import algorithm.iBOATDetection;
 import bean.Cell;
 import bean.GPS;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
-import hbase.HBaseUtil;
 import hbase.TrajectoryUtil;
 import org.apache.commons.io.FileUtils;
-import util.CommonUtil;
 import util.TileSystem;
 import web.bean.Result;
 
@@ -19,9 +18,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
- * 在线检测
+ * Online Detect.
+ *
+ * @author Bin Cheng
  */
 public class OnlineDetect extends HttpServlet {
 
@@ -36,6 +38,14 @@ public class OnlineDetect extends HttpServlet {
     public static Map<String, List<List<Cell>>> allTrajectories = new HashMap<>();
     public static Map<String, Double> score = new HashMap<>();
     public static Map<String, GPS> lastGPS = new HashMap<>();
+
+    private static final int FINISHED = 3;
+
+    private ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+            .setNameFormat("online-detection-pool-%d").build();
+    private ExecutorService threadPool = new ThreadPoolExecutor(5, 5,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
 
 
     @Override
@@ -54,16 +64,15 @@ public class OnlineDetect extends HttpServlet {
                 double endLongitude = Double.parseDouble(ends[1]);
                 GPS endPoint = new GPS(endLatitude, endLongitude, new Date());
 
-                new Thread(() -> initDetect(id, startPoint, endPoint)).start();
+                threadPool.execute(() -> initDetect(id, startPoint, endPoint));
 
-//                response(req, resp, 200, "all:" + allTrajectories.get(id).size());
                 response(req, resp, 200, "init");
             } catch (Exception e) {
                 e.printStackTrace();
                 response(req, resp, 500, "Please input correct start and end points!");
             }
         } else {
-            GPS point = null;
+            GPS point;
             try {
                 String[] points = req.getParameter("point").split(",");
                 double latitude = Double.parseDouble(points[0]);
@@ -72,12 +81,14 @@ public class OnlineDetect extends HttpServlet {
             } catch (Exception e) {
                 e.printStackTrace();
                 response(req, resp, 500, "Please input correct point!");
+                return;
             }
 
             try {
                 iBOATDetection.DetectResult detectResult = iBOATDetection.iBOATOnline(id, point);
-                if (detectResult.code == 3)
+                if (detectResult.code == FINISHED) {
                     finishDetect(id);
+                }
                 response(req, resp, 200, new Gson().toJson(detectResult));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -111,13 +122,13 @@ public class OnlineDetect extends HttpServlet {
         starts.put(id, startPoint);
         ends.put(id, endPoint);
 
-        Cell startCell = TileSystem.GPSToTile(startPoint);
-        Cell endCell = TileSystem.GPSToTile(endPoint);
+        Cell startCell = TileSystem.gpsToTile(startPoint);
+        Cell endCell = TileSystem.gpsToTile(endPoint);
 
         Map<String, List<GPS>> allTrajectoryGPSs = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, "SH");
 
         //write file
-        new Thread(() -> {
+        threadPool.execute(() -> {
             List<List<GPS>> allTrajectoriesGPS = new ArrayList<>(allTrajectoryGPSs.values());
             String root = getServletContext().getRealPath("/");
             File file = FileUtils.getFile(root + "detect_" + id + ".json");
@@ -129,7 +140,7 @@ public class OnlineDetect extends HttpServlet {
                 e.printStackTrace();
             }
             WebSocketServer.sendMessage(id, "historyDone");
-        }).run();
+        });
 
         List<List<Cell>> allTrajectoriesList = new ArrayList<>(TrajectoryUtil.getAllTrajectoryCells(startCell, endCell, "SH").values());
 
@@ -150,9 +161,10 @@ public class OnlineDetect extends HttpServlet {
         List<List<Double[]>> afterCompress = new ArrayList<>();
 
         for (List<GPS> trajectory : allTrajectoriesGPS) {
-            List<GPS> removed = CommonUtil.removeExtraGPS(trajectory, start, end);
-            if (removed == null || removed.size() == 0)
+            List<GPS> removed = TrajectoryUtil.removeExtraGPS(trajectory, start, end);
+            if (removed == null || removed.size() == 0) {
                 continue;
+            }
             List<Double[]> item = new ArrayList<>();
             for (GPS gps : removed) {
                 item.add(new Double[]{gps.getLatitude(), gps.getLongitude()});
@@ -174,10 +186,4 @@ public class OnlineDetect extends HttpServlet {
         lastGPS.remove(id);
     }
 
-    @Override
-    public void destroy() {
-        System.out.println("destroy");
-        HBaseUtil.close();
-        super.destroy();
-    }
 }

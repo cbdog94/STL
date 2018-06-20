@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * @author cbdog94
+ */
 public class OnATrade {
 
     @Parameter(names = {"--city", "-c"}, description = "Which city to be counted (SH/SZ/CD).", required = false, validateWith = CommonUtil.CityValidator.class)
@@ -66,12 +69,12 @@ public class OnATrade {
                 .map(Map.Entry::getKey).collect(Collectors.toSet());
 
         // Evaluation.
-        int TP = Sets.intersection(anomalyTrajectory, onATradeTrajectory).size();
-        int FP = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), onATradeTrajectory).size();
-        int FN = anomalyTrajectory.size() - TP;
-        int TN = trajectoryGPS.size() - anomalyTrajectory.size() - FP;
+        int tp = Sets.intersection(anomalyTrajectory, onATradeTrajectory).size();
+        int fp = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), onATradeTrajectory).size();
+        int fn = anomalyTrajectory.size() - tp;
+        int tn = trajectoryGPS.size() - anomalyTrajectory.size() - fp;
 
-        CommonUtil.printResult(TP, FP, FN, TN);
+        CommonUtil.printResult(tp, fp, fn, tn);
     }
 
 

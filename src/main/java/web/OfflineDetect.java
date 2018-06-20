@@ -4,6 +4,7 @@ import algorithm.STLDetection;
 import algorithm.iBOATDetection;
 import bean.Cell;
 import bean.GPS;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
 import hbase.HBaseUtil;
 import hbase.TrajectoryUtil;
@@ -22,15 +23,24 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
- * 离线检测
+ * Offline Detect
+ *
+ * @author Bin Cheng
  */
 public class OfflineDetect extends HttpServlet {
 
     private static Set<String> idSet = new HashSet<>();
 
     private Result result = new Result();
+
+    private ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+            .setNameFormat("offline-detection-pool-%d").build();
+    private ExecutorService threadPool = new ThreadPoolExecutor(5, 5,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(1024), namedThreadFactory, new ThreadPoolExecutor.AbortPolicy());
 
 
     @Override
@@ -49,9 +59,9 @@ public class OfflineDetect extends HttpServlet {
                 double endLongitude = Double.parseDouble(ends[1]);
                 GPS endPoint = new GPS(endLatitude, endLongitude, new Date());
 
-                new Thread(() -> detect(id, startPoint, endPoint)).start();
+                threadPool.execute(() -> detect(id, startPoint, endPoint));
+//                new Thread(() -> detect(id, startPoint, endPoint)).start();
 
-//                response(req, resp, 200, "all:" + allTrajectories.get(id).size());
                 response(req, resp, 200, "init");
             } catch (Exception e) {
                 e.printStackTrace();
@@ -88,38 +98,24 @@ public class OfflineDetect extends HttpServlet {
      */
     private void detect(String id, GPS startPoint, GPS endPoint) {
 
-        Cell startCell = TileSystem.GPSToTile(startPoint);
-        Cell endCell = TileSystem.GPSToTile(endPoint);
+        Cell startCell = TileSystem.gpsToTile(startPoint);
+        Cell endCell = TileSystem.gpsToTile(endPoint);
 
         //First step，得到经过起止点所有轨迹
-        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell,"SH");
-//        Set<String> allTrajectoryID = TrajectoryUtil.getAllTrajectoryID(startPoint, endPoint);
-//        List<List<Cell>> allTrajectoryCell = TrajectoryUtil.getAllTrajectoryCell(allTrajectoryID);
-
-//        final List<List<GPS>>[] allTrajectoryGPS = new List[0];
-//
-//        Thread thread = new Thread(() -> allTrajectoryGPS[0] = TrajectoryUtil.getAllTrajectoryGPS(allTrajectories.keySet()));
-//        thread.start();
-//
-//        //等待子线程
-//        try {
-//            thread.join();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell, "SH");
 
         List<TrajectoryInfo> iBOATTrajectoryInfo = new ArrayList<>();
         List<TrajectoryInfo> iBOATNormalTrajectoryInfo = new ArrayList<>();
 
-        Map<String, List<GPS>> normalTrajectory = new HashMap<>();
-        Map<String, List<GPS>> anomalyTrajectory = new HashMap<>();
+        Map<String, List<GPS>> normalTrajectory = new HashMap<>(128);
+        Map<String, List<GPS>> anomalyTrajectory = new HashMap<>(16);
 
         //得到所有轨迹的ID集合，然后对每条轨迹进行检测
         for (String trajectoryID : allTrajectories.keySet()) {
 
             //Second,得到待测轨迹的GPS坐标序列
             List<GPS> testTrajectory = TrajectoryUtil.getTrajectoryGPSPoints(trajectoryID);
-            testTrajectory = CommonUtil.removeExtraGPS(testTrajectory, startCell, endCell);
+            testTrajectory = TrajectoryUtil.removeExtraGPS(testTrajectory, startCell, endCell);
             if (testTrajectory == null || testTrajectory.size() == 0) {
                 continue;
             }
@@ -146,38 +142,39 @@ public class OfflineDetect extends HttpServlet {
 
         }
 
-        new Thread(() -> {
-            String root = getServletContext().getRealPath("/");
-            File file = FileUtils.getFile(root + "offlineIBOAT_" + id + ".json");
-            String content = new Gson().toJson(iBOATTrajectoryInfo);
-            try {
-                FileUtils.write(file, content, false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            WebSocketOffline.sendMessage(id, "iBOATDone");
-        }).start();
+        threadPool.execute(
+                () -> {
+                    String root = getServletContext().getRealPath("/");
+                    File file = FileUtils.getFile(root + "offlineIBOAT_" + id + ".json");
+                    String content = new Gson().toJson(iBOATTrajectoryInfo);
+                    try {
+                        FileUtils.write(file, content, false);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    WebSocketOffline.sendMessage(id, "iBOATDone");
+                });
 
-        List<TrajectoryInfo> DTMAnomlyTrajectoryInfo = new ArrayList<>();
-        for (String trajectoryID : anomalyTrajectory.keySet()) {
-            double score = STLDetection.detect(new ArrayList<>(normalTrajectory.values()), anomalyTrajectory.get(trajectoryID));
+        List<TrajectoryInfo> STLAnomalyTrajectoryInfo = new ArrayList<>();
+        for (Map.Entry<String,List<GPS>> trajectory : anomalyTrajectory.entrySet()) {
+            double score = STLDetection.detect(new ArrayList<>(normalTrajectory.values()), trajectory.getValue());
             TrajectoryInfo trajectoryInfo = new TrajectoryInfo();
-            trajectoryInfo.taxiId = trajectoryID;
+            trajectoryInfo.taxiId = trajectory.getKey();
             trajectoryInfo.score = score;
             trajectoryInfo.normal = score < 0.1;
-            trajectoryInfo.trajectory = compress(anomalyTrajectory.get(trajectoryID));
+            trajectoryInfo.trajectory = compress(trajectory.getValue());
             if (trajectoryInfo.normal) {
                 iBOATNormalTrajectoryInfo.add(trajectoryInfo);
             } else {
-                DTMAnomlyTrajectoryInfo.add(trajectoryInfo);
+                STLAnomalyTrajectoryInfo.add(trajectoryInfo);
             }
 
         }
-        DTMAnomlyTrajectoryInfo.addAll(iBOATNormalTrajectoryInfo);
+        STLAnomalyTrajectoryInfo.addAll(iBOATNormalTrajectoryInfo);
 
         String root = getServletContext().getRealPath("/");
         File file = FileUtils.getFile(root + "offlineDTM_" + id + ".json");
-        String content = new Gson().toJson(DTMAnomlyTrajectoryInfo);
+        String content = new Gson().toJson(STLAnomalyTrajectoryInfo);
         try {
             FileUtils.write(file, content, false);
         } catch (IOException e) {
@@ -200,8 +197,7 @@ public class OfflineDetect extends HttpServlet {
 
     @Override
     public void destroy() {
-        System.out.println("destroy");
-        HBaseUtil.close();
+        threadPool.shutdown();
         super.destroy();
     }
 }

@@ -28,25 +28,35 @@ public class STLDetection {
         return detect(allNormalTrajectories, testTrajectory, THRESHOLD, THRESHOLD, DEGREE);
     }
 
-    public static double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory, double thresholdTime, double thresholdDist, int degree) {
+    /**
+     * The implementation of STL.
+     *
+     * @param trainingTrajectories The training trajectory set
+     * @param testTrajectory       Testing trajectory
+     * @param thresholdTime        Threshold of driving-time
+     * @param thresholdDist        Threshold of driving-distance
+     * @param degree               The complexity of linear model
+     * @return the proportion of anomalous points
+     */
+    public static double detect(List<List<GPS>> trainingTrajectories, List<GPS> testTrajectory, double thresholdTime, double thresholdDist, int degree) {
 
-        List<Double> linearDistance = new ArrayList<>();//x
-        List<Double> intervals = new ArrayList<>();//y
-        List<Double> totalDistance = new ArrayList<>();//y2
+        List<Double> linearDistance = new ArrayList<>();
+        List<Double> intervals = new ArrayList<>();
+        List<Double> totalDistance = new ArrayList<>();
 
         double[] wt, wd;
         double et, ed;
         double linearDist, drivingDist, segment, drivingTime;
 
         Date startTime = testTrajectory.get(0).getTimestamp();
-        Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
-        calendar.setTime(startTime);   // assigns calendar to given date
+        Calendar calendar = GregorianCalendar.getInstance();
+        calendar.setTime(startTime);
         int testStartHour = calendar.get(Calendar.HOUR_OF_DAY);
 
         if (!cacheWT.containsKey(testStartHour)) {
 
             //get LDT of each point
-            for (List<GPS> oneTrajectory : allNormalTrajectories) {
+            for (List<GPS> oneTrajectory : trainingTrajectories) {
                 GPS startPoint = oneTrajectory.get(0);
                 GPS lastPoint = oneTrajectory.get(0);
                 drivingDist = 0;
@@ -57,13 +67,14 @@ public class STLDetection {
 
                 //filter
                 if (currentStartHour < testStartHour - 1 ||
-                        currentStartHour > testStartHour + 1)
+                        currentStartHour > testStartHour + 1) {
                     continue;
+                }
 
                 for (GPS currentPoint : oneTrajectory) {
                     linearDist = CommonUtil.distanceBetween(startPoint, currentPoint);
                     segment = CommonUtil.distanceBetween(lastPoint, currentPoint);
-                    drivingTime = (currentPoint.getTimestamp().getTime() - startPoint.getTimestamp().getTime()) / 1000;
+                    drivingTime = (currentPoint.getTimestamp().getTime() - startPoint.getTimestamp().getTime()) / 1000.0;
                     drivingDist += segment;
                     linearDistance.add(linearDist);
                     intervals.add(drivingTime);
@@ -130,7 +141,7 @@ public class STLDetection {
         for (GPS gps : testTrajectory) {
             linearDist = CommonUtil.distanceBetween(startPos, gps);
             segment = CommonUtil.distanceBetween(lastPos, gps);
-            drivingTime = (gps.getTimestamp().getTime() - startTime.getTime()) / 1000;
+            drivingTime = (gps.getTimestamp().getTime() - startTime.getTime()) / 1000.0;
             drivingDist += segment;
             double predictT = polyT.value(linearDist);
             double predictD = polyD.value(linearDist);
@@ -138,8 +149,9 @@ public class STLDetection {
             double cdfT = new NormalDistribution(predictT, Math.sqrt(et)).cumulativeProbability(drivingTime);
             double cdfD = new NormalDistribution(predictD, Math.sqrt(ed)).cumulativeProbability(drivingDist);
 
-            if (cdfT > thresholdTime && cdfD > thresholdDist)
+            if (cdfT > thresholdTime && cdfD > thresholdDist) {
                 anomalyPoints.add(gps);
+            }
 
             anomalyScore += segment / (1 + Math.exp(200 * Math.max(thresholdTime - cdfT, thresholdDist - cdfD)));
 
