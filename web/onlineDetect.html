@@ -30,11 +30,17 @@
             bottom: 0;
             right: 0;
         }
+
+        .no-close .ui-dialog-titlebar-close {
+            display: none;
+        }
     </style>
-    <script src="https://cdn.bootcss.com/echarts/4.0.2/echarts.min.js"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.1.0/echarts.min.js"></script>
+    <link href="https://cdn.bootcss.com/jqueryui/1.12.1/jquery-ui.min.css" rel="stylesheet">
     <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script type="text/javascript"
-            src="https://api.map.baidu.com/api?v=2.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+            src="https://api.map.baidu.com/api?v=3.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
     <script type="text/javascript" src="tool.js"></script>
     <title>在线检测</title>
 </head>
@@ -43,13 +49,17 @@
 <div id="allmap"></div>
 <div id="chart"></div>
 <div id="hint"></div>
+<div id="dialog" title="提示">
+    <p>正在初始化，请稍等...</p>
+</div>
 </body>
 
 </html>
 <script type="text/javascript">
+    $("#dialog").dialog({dialogClass: "no-close", autoOpen: false, draggable: false, resizable: false});
     // 百度地图API功能
     var map = new BMap.Map("allmap");
-    var point = new BMap.Point(121.333517, 31.173008);
+    var point = new BMap.Point(121.4780, 31.2369);
     map.centerAndZoom(point, 13);
 
     var mapType1 = new BMap.MapTypeControl({anchor: BMAP_ANCHOR_TOP_RIGHT});
@@ -97,6 +107,7 @@
     var index = 0;
     var id;
     var lastPoint, currentPoint;
+
     function initDetect() {
         id = uuid();
 
@@ -107,12 +118,13 @@
                 detect(id, e.lat, e.lng);
             }, 100));
 
+        $("#dialog").dialog("open");
         $.ajax({
             type: "get",
             url: urlPreFix + 'OnlineDetect?id=' + id + '&start=' + startPoint[0] + ',' + startPoint[1] + '&end=' + endPoint[0] + ',' + endPoint[1],
             dataType: "jsonp",
             jsonp: "callback",
-            success: function (json) {
+            success: function () {
                 initWebSocket();
                 $("#hint").text("正在初始化...");
             }
@@ -120,18 +132,16 @@
     }
 
     function initWebSocket() {
-        var ws = new WebSocket("ws://" + location.host + "/iBOAT/init");
+        var ws = new WebSocket("ws://" + location.host + "/STL/online/" + id);
 
-        ws.onopen = function () {
-            ws.send(id);
-        }
         ws.onmessage = function (evn) {
             console.log(evn.data);
             if (evn.data === "initDone") {
+                $("#dialog>p").text("初始化完成,请在弹出窗口查看历史轨迹!使用右键选择途经点!");
+                setTimeout($("#dialog").dialog("close"), 1500);
                 $("#hint").text("初始化完成");
-            }else if(evn.data === "historyDone")
-            {
-                window.open("history.html?id="+id);
+            } else if (evn.data === "historyDone") {
+                window.open("history.html?id=" + id);
             }
         }
     }
@@ -145,17 +155,19 @@
             jsonp: "callback",
             success: function (json) {
                 console.log(json);
-                if (json.code == 200) {
+                if (json.code === 200) {
                     var msg = eval('(' + json.msg + ')');
-                    if (msg.code == 0 || msg.code == 1 || msg.code == 3) {
+                    if (msg.code === 0 || msg.code === 1 || msg.code === 3) {
                         index++;
                         var myIcon;
-                        if (msg.code == 0)
+                        if (msg.code === 0)
                             myIcon = new BMap.Icon("marker_red_sprite.png", new BMap.Size(19, 25));
-                        else if(msg.code == 1)
+                        else if (msg.code === 1)
                             myIcon = new BMap.Icon("marker_blue_sprite.png", new BMap.Size(19, 25));
-                        else{
+                        else {
                             myIcon = new BMap.Icon("marker_red_sprite.png", new BMap.Size(19, 25));
+                            $("#dialog>p").text("到达目的地附近，完成检测!");
+                            $("#dialog").dialog("open");
                             $("#hint").text("检测完成！");
                         }
                         currentPoint = new BMap.Point(lng, lat);
@@ -210,8 +222,7 @@
         },
         xAxis: {
             type: 'value',
-            boundaryGap: false,
-            //data: ['1','2','3','4','5']
+            boundaryGap: false
         },
         yAxis: {
             type: 'value',
@@ -223,13 +234,6 @@
             {
                 name: '支持度',
                 type: 'line',
-                //data:[100, 80, 70, 80, 90, 60, 50],
-                // markPoint: {
-                //     data: [
-                //         {type: 'max', name: '最大值'},
-                //         {type: 'min', name: '最小值'}
-                //     ]
-                // },
                 markLine: {
                     data: [
                         {yAxis: 4, name: '阈值'}
@@ -241,6 +245,5 @@
     };
     myChart.setOption(option);
     var data = [];
-
 
 </script>

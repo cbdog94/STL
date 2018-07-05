@@ -7,10 +7,14 @@
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
-  <head>
-    <title>hello</title>
-  </head>
-  <body>
-  hello world
-  </body>
+<head>
+    <meta charset="utf-8">
+    <title>出租车异常检测</title>
+</head>
+<body>
+<h1 style="text-align:center">出租车异常检测</h1>
+<h2 style="text-align:center"><a href="offlineDetect.html">离线检测</a></h2>
+<h2 style="text-align:center"><a href="onlineDetect.html">在线检测</a></h2>
+</body>
+
 </html>

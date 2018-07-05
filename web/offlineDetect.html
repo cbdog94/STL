@@ -18,11 +18,16 @@
             width: 100%;
             float: left;
         }
+
+        .no-close .ui-dialog-titlebar-close {
+            display: none;
+        }
     </style>
-    <script src="https://cdn.bootcss.com/echarts/4.0.2/echarts.min.js"></script>
+    <link href="https://cdn.bootcss.com/jqueryui/1.12.1/jquery-ui.min.css" rel="stylesheet">
     <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script type="text/javascript"
-            src="https://api.map.baidu.com/api?v=2.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+            src="https://api.map.baidu.com/api?v=3.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
     <script type="text/javascript" src="tool.js"></script>
     <title>离线检测</title>
 </head>
@@ -31,13 +36,17 @@
 <div id="allmap"></div>
 <div id="chart"></div>
 <div id="hint"></div>
+<div id="dialog" title="提示">
+    <p>正在进行离线检测，请稍等...</p>
+</div>
 </body>
 
 </html>
 <script type="text/javascript">
+    $("#dialog").dialog({dialogClass: "no-close", autoOpen: false, draggable: false, resizable: false});
     // 百度地图API功能
     var map = new BMap.Map("allmap");
-    var point = new BMap.Point(121.333517, 31.173008);
+    var point = new BMap.Point(121.4780, 31.2369);
     map.centerAndZoom(point, 13);
 
     var mapType1 = new BMap.MapTypeControl({anchor: BMAP_ANCHOR_TOP_RIGHT});
@@ -79,18 +88,15 @@
     }
     map.addContextMenu(menu);
 
-    var startPoint, endPoint;
-    //var urlPreFix = 'http://192.168.1.8:8080/iBOAT/';
-    var urlPreFix = '';
-
+    var startPoint, endPoint, lastPoint;
     var id;
-    var lastPoint;
+
     function initDetect() {
         id = uuid();
-
+        $("#dialog").dialog("open");
         $.ajax({
             type: "get",
-            url: urlPreFix + 'OfflineDetect?id=' + id + '&start=' + startPoint[0] + ',' + startPoint[1] + '&end=' + endPoint[0] + ',' + endPoint[1],
+            url: 'OfflineDetect?id=' + id + '&start=' + startPoint[0] + ',' + startPoint[1] + '&end=' + endPoint[0] + ',' + endPoint[1],
             dataType: "jsonp",
             jsonp: "callback",
             success: function () {
@@ -100,18 +106,20 @@
     }
 
     function initWebSocket() {
-        var ws = new WebSocket("ws://" + location.host + "/iBOAT/offline");
 
-        ws.onopen = function () {
-            ws.send(id);
-        }
+        var ws = new WebSocket("ws://" + location.host + "/STL/offline/" + id);
+
         ws.onmessage = function (evn) {
             console.log(evn.data);
+
             if (evn.data === "iBOATDone") {
+                $("#dialog>p").text("iBOAT检测完成!");
                 window.open("offlineResult.html?json=offlineIBOAT_" + id, "iBOAT检测结果");
-            } else if (evn.data === "DTMDone") {
-                window.open("offlineResult.html?json=offlineDTM_" + id, "DTM检测结果");
+            } else if (evn.data === "STLDone") {
+                $("#dialog>p").text("STL检测完成!");
+                window.open("offlineResult.html?json=offlineSTL_" + id, "STL检测结果");
             }
+
         }
     }
 
@@ -119,9 +127,5 @@
         var gps = bd2wgs(e.point.lat, e.point.lng);
         console.log(gps);
     });
-
-
-    var data = [];
-
 
 </script>

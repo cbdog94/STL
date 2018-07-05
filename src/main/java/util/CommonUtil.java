@@ -1,6 +1,5 @@
 package util;
 
-import bean.Cell;
 import bean.GPS;
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.ParameterException;

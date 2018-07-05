@@ -9,12 +9,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Offline SocketServer
+ * Online SocketServer
  *
  * @author Bin Cheng
  */
-@ServerEndpoint("/offline/{userID}")
-public class WebSocketOffline {
+@ServerEndpoint("/online/{userID}")
+public class WebSocketOnline {
 
     private static Map<String, Session> clients = new ConcurrentHashMap<>();
 
