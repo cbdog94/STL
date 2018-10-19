@@ -9,7 +9,7 @@
     <version>1.0</version>
 
     <properties>
-        <hadoopVersion>2.9.0</hadoopVersion>
+        <hadoopVersion>3.1.1</hadoopVersion>
         <hbaseVersion>1.4.4</hbaseVersion>
     </properties>
 

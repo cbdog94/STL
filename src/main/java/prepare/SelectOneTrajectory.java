@@ -14,11 +14,11 @@ public class SelectOneTrajectory {
 
     public static void main(String[] args) throws IOException {
 
-        if (args.length != 1) {
-            System.out.println("please input trajectoryID");
-            return;
-        }
-        List<GPS> trajectory = TrajectoryUtil.getTrajectoryGPSPoints(args[0]);
+//        if (args.length != 1) {
+//            System.out.println("please input trajectoryID");
+//            return;
+//        }
+        List<GPS> trajectory = TrajectoryUtil.getTrajectoryGPSPoints("fe4186d55580490ea429c10d26d187d2");
         System.out.println(new Gson().toJson(trajectory));
     }
 
