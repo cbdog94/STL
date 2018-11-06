@@ -43,7 +43,7 @@ public class CommonUtil {
     public static double timeBetween(GPS GPS1, GPS GPS2) {
         if (GPS1.getTimestamp() == null || GPS2.getTimestamp() == null)
             return -1;
-        return Math.abs(GPS1.getTimestamp().getTime() - GPS2.getTimestamp().getTime()) / 1000;
+        return Math.abs(GPS1.getTimestamp().getTime() - GPS2.getTimestamp().getTime()) * 1.0 / 1000;
     }
 
     /**
@@ -145,7 +145,7 @@ public class CommonUtil {
     public static boolean isValidTimestamp(String timestamp) {
         return Pattern.compile("\\w{4}-\\w{2}-\\w{2} \\w{2}:\\w{2}:\\w{2}").matcher(timestamp).matches();
     }
-    
+
     public static List<GPS> removeExtraGPS(List<GPS> gpsTrajectory, Cell start, Cell end) {
         int startIndex = 0;
         int endIndex = 0;

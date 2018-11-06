@@ -2,19 +2,27 @@ package prepare;
 
 import bean.Cell;
 import bean.GPS;
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import hbase.TrajectoryUtil;
+import org.apache.commons.io.FileUtils;
 import util.CommonUtil;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Created by cbdog94 on 17-3-17.
  */
 public class SelectTrajectories {
+
+    private Map<Integer, List<Double>> normalDistanceMap = new ConcurrentHashMap<>(), anomalyDistanceMap = new ConcurrentHashMap<>();
+    private Map<Integer, List<Double>> normalTimeMap = new ConcurrentHashMap<>(), anomalyTimeMap = new ConcurrentHashMap<>();
+    private Map<Integer, List<Double>> normalDisplacementMap = new ConcurrentHashMap<>(), anomalyDisplacementMap = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
         Cell startPoint, endPoint;
@@ -34,34 +42,58 @@ public class SelectTrajectories {
             endPoint = new Cell(args[1]);
         }
 
-        printAllTrajectoryPoints(startPoint, endPoint);
+        new SelectTrajectories().printAllTrajectoryPoints(startPoint, endPoint);
 
     }
 
-    private static void printAllTrajectoryPoints(Cell start, Cell end) {
+    private void printAllTrajectoryPoints(Cell start, Cell end) {
+        Map<String, List<GPS>> trajectories = TrajectoryUtil.getAllTrajectoryGPSs(start, end, "SH");
+        System.out.println(trajectories.size());
+        // Anomaly Label.
+        Set<String> anomalyTrajectory = CommonUtil.anomalyTrajectory(trajectories, "SH", true);
 
-        Set<String> trajectoryID = TrajectoryUtil.getAllTrajectoryID(start, end, "SH");
+        Map<String, List<GPS>> normalTrajectories = Maps.filterKeys(trajectories, (x) -> !anomalyTrajectory.contains(x));
+        Map<String, List<GPS>> anomalyTrajectories = Maps.filterKeys(trajectories, (x) -> anomalyTrajectory.contains(x));
 
-        List<Trajectory> trajectoryList = new ArrayList<>();
+        normalTrajectories.forEach((x, y) -> process(y, normalDistanceMap, normalTimeMap, normalDisplacementMap));
+        anomalyTrajectories.forEach((x, y) -> process(y, anomalyDistanceMap, anomalyTimeMap, anomalyDisplacementMap));
 
-        for (String trajectoryId : trajectoryID) {
-            List<GPS> gpsTrajectory = TrajectoryUtil.getTrajectoryGPSPoints(trajectoryId);
-            gpsTrajectory = CommonUtil.removeExtraGPS(gpsTrajectory, start, end);
-            if (gpsTrajectory == null)
-                continue;
-            trajectoryList.add(new Trajectory(trajectoryId, new Gson().toJson(gpsTrajectory)));
+        try {
+            FileUtils.write(FileUtils.getFile("normalDistanceMap.json"), new Gson().toJson(normalDistanceMap), "UTF-8");
+            FileUtils.write(FileUtils.getFile("normalTimeMap.json"), new Gson().toJson(normalTimeMap), "UTF-8");
+            FileUtils.write(FileUtils.getFile("anomalyDistanceMap.json"), new Gson().toJson(anomalyDistanceMap), "UTF-8");
+            FileUtils.write(FileUtils.getFile("anomalyTimeMap.json"), new Gson().toJson(anomalyTimeMap), "UTF-8");
+            FileUtils.write(FileUtils.getFile("normalDisplacementMap.json"), new Gson().toJson(normalDisplacementMap), "UTF-8");
+            FileUtils.write(FileUtils.getFile("anomalyDisplacementMap.json"), new Gson().toJson(anomalyDisplacementMap), "UTF-8");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
-        System.out.println(new Gson().toJson(trajectoryList));
     }
 
-    static class Trajectory {
-        String id;
-        String coords;
+    private void process(List<GPS> trajectory, Map<Integer, List<Double>> distanceMap, Map<Integer, List<Double>> timeMap, Map<Integer, List<Double>> displacementMap) {
+        GPS startPoint = trajectory.get(0), endPoint = trajectory.get(trajectory.size() - 1), lastPoint = trajectory.get(0);
+        double totalDistance = 0, totalTime = 0;
+        for (GPS point : trajectory) {
+            double displacement = CommonUtil.distanceBetween(point, startPoint);
+            totalDistance += CommonUtil.distanceBetween(lastPoint, startPoint);
+            totalTime += CommonUtil.timeBetween(lastPoint, startPoint);
+            lastPoint = point;
+            double endDisplacement = CommonUtil.distanceBetween(point, endPoint);
 
-        public Trajectory(String id, String coords) {
-            this.id = id;
-            this.coords = coords;
+            int bucket = (int) (displacement / 100);
+            if (!distanceMap.containsKey(bucket)) {
+                distanceMap.put(bucket, new CopyOnWriteArrayList<>());
+            }
+            distanceMap.get(bucket).add(totalDistance);
+            if (!timeMap.containsKey(bucket)) {
+                timeMap.put(bucket, new CopyOnWriteArrayList<>());
+            }
+            timeMap.get(bucket).add(totalTime);
+            if (!displacementMap.containsKey(bucket)) {
+                displacementMap.put(bucket, new CopyOnWriteArrayList<>());
+            }
+            displacementMap.get(bucket).add(endDisplacement);
         }
     }
 
