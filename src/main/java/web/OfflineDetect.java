@@ -10,16 +10,13 @@ import hbase.TrajectoryUtil;
 import org.apache.commons.io.FileUtils;
 import util.CommonUtil;
 import util.TileSystem;
-import web.bean.Result;
 import web.bean.TrajectoryInfo;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -30,11 +27,9 @@ public class OfflineDetect extends HttpServlet {
 
     private static Set<String> idSet = new HashSet<>();
 
-    private Result result = new Result();
-
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         String id = req.getParameter("id");
         if (!idSet.contains(id)) {
             try {
@@ -51,34 +46,13 @@ public class OfflineDetect extends HttpServlet {
 
                 new Thread(() -> detect(id, startPoint, endPoint)).start();
 
-//                response(req, resp, 200, "all:" + allTrajectories.get(id).size());
-                response(req, resp, 200, "init");
+                web.CommonUtil.response(req, resp, 200, "init");
             } catch (Exception e) {
                 e.printStackTrace();
-                response(req, resp, 500, "Please input correct start and end points!");
+                web.CommonUtil.response(req, resp, 500, "Please input correct start and end points!");
             }
         }
     }
-
-    private void response(HttpServletRequest req, HttpServletResponse resp, int code, String msg) {
-        result.setCode(code);
-        result.setMsg(msg);
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=utf-8");
-        PrintWriter out = null;
-        try {
-            out = resp.getWriter();
-            out.print(req.getParameter("callback") + "(" + new Gson().toJson(result) + ")");
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (out != null) {
-                out.close();
-            }
-        }
-    }
-
 
     /**
      * 对经过起止点的所有轨迹进行检测，轨迹来源与数据库
@@ -92,7 +66,7 @@ public class OfflineDetect extends HttpServlet {
         Cell endCell = TileSystem.GPSToTile(endPoint);
 
         //First step，得到经过起止点所有轨迹
-        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell,"SH");
+        Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell, "SH");
 //        Set<String> allTrajectoryID = TrajectoryUtil.getAllTrajectoryID(startPoint, endPoint);
 //        List<List<Cell>> allTrajectoryCell = TrajectoryUtil.getAllTrajectoryCell(allTrajectoryID);
 
@@ -151,7 +125,7 @@ public class OfflineDetect extends HttpServlet {
             File file = FileUtils.getFile(root + "offlineIBOAT_" + id + ".json");
             String content = new Gson().toJson(iBOATTrajectoryInfo);
             try {
-                FileUtils.write(file, content, false);
+                FileUtils.write(file, content, "UTF-8", false);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -179,7 +153,7 @@ public class OfflineDetect extends HttpServlet {
         File file = FileUtils.getFile(root + "offlineDTM_" + id + ".json");
         String content = new Gson().toJson(DTMAnomlyTrajectoryInfo);
         try {
-            FileUtils.write(file, content, false);
+            FileUtils.write(file, content, "UTF-8", false);
         } catch (IOException e) {
             e.printStackTrace();
         }

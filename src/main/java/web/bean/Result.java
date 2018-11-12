@@ -6,7 +6,6 @@ package web.bean;
 public class Result {
     private int code;
     private String msg;
-//    private Object data;
 
     public int getCode() {
         return code;
@@ -24,11 +23,8 @@ public class Result {
         this.msg = msg;
     }
 
-//    public Object getData() {
-//        return data;
-//    }
-//
-//    public void setData(Object data) {
-//        this.data = data;
-//    }
+    public Result(int code, String msg) {
+        this.code = code;
+        this.msg = msg;
+    }
 }

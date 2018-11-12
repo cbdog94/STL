@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  *
  * @author Bin Cheng
  */
-public class Cell implements Serializable{
+public class Cell implements Serializable {
 
     private int tileX;
     private int tileY;
@@ -49,7 +49,7 @@ public class Cell implements Serializable{
             this.tileX = Integer.parseInt(matcher.group(1));
             this.tileY = Integer.parseInt(matcher.group(2));
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new IllegalArgumentException("Illegal Cell Format. Found " + tile + ". Required [219547,107093].");
         }
     }
 

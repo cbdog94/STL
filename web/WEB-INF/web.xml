@@ -23,4 +23,31 @@
         <url-pattern>/OfflineDetect</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>OneTrajectory</servlet-name>
+        <servlet-class>web.OneTrajectory</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>OneTrajectory</servlet-name>
+        <url-pattern>/oneTrajectory</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>DetectOneTrajectory</servlet-name>
+        <servlet-class>web.DetectOneTrajectory</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DetectOneTrajectory</servlet-name>
+        <url-pattern>/detectOneTrajectory</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>VisualizeTrajectory</servlet-name>
+        <servlet-class>web.VisualizeTrajectory</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>VisualizeTrajectory</servlet-name>
+        <url-pattern>/visualTrajectory</url-pattern>
+    </servlet-mapping>
+
 </web-app>

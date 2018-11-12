@@ -9,15 +9,12 @@ import hbase.TrajectoryUtil;
 import org.apache.commons.io.FileUtils;
 import util.CommonUtil;
 import util.TileSystem;
-import web.bean.Result;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -25,10 +22,9 @@ import java.util.*;
  */
 public class OnlineDetect extends HttpServlet {
 
-    public static Set<String> idSet = new HashSet<>();
-    public static Map<String, GPS> starts = new HashMap<>();
+    private static Set<String> idSet = new HashSet<>();
+    private static Map<String, GPS> starts = new HashMap<>();
     public static Map<String, GPS> ends = new HashMap<>();
-    private Result result = new Result();
 
     public static Map<String, List<Cell>> anomalyCells = new HashMap<>();
     public static Map<String, List<List<Cell>>> supportTrajectories = new HashMap<>();
@@ -39,7 +35,7 @@ public class OnlineDetect extends HttpServlet {
 
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         String id = req.getParameter("id");
         if (!idSet.contains(id)) {
             try {
@@ -56,11 +52,10 @@ public class OnlineDetect extends HttpServlet {
 
                 new Thread(() -> initDetect(id, startPoint, endPoint)).start();
 
-//                response(req, resp, 200, "all:" + allTrajectories.get(id).size());
-                response(req, resp, 200, "init");
+                web.CommonUtil.response(req, resp, 200, "init");
             } catch (Exception e) {
                 e.printStackTrace();
-                response(req, resp, 500, "Please input correct start and end points!");
+                web.CommonUtil.response(req, resp, 500, "Please input correct start and end points!");
             }
         } else {
             GPS point = null;
@@ -71,40 +66,22 @@ public class OnlineDetect extends HttpServlet {
                 point = new GPS(latitude, longitude, new Date());
             } catch (Exception e) {
                 e.printStackTrace();
-                response(req, resp, 500, "Please input correct point!");
+                web.CommonUtil.response(req, resp, 500, "Please input correct point!");
             }
 
             try {
                 iBOATDetection.DetectResult detectResult = iBOATDetection.iBOATOnline(id, point);
                 if (detectResult.code == 3)
                     finishDetect(id);
-                response(req, resp, 200, new Gson().toJson(detectResult));
+                web.CommonUtil.response(req, resp, 200, new Gson().toJson(detectResult));
             } catch (Exception e) {
                 e.printStackTrace();
-                response(req, resp, 500, "Detection error!");
+                web.CommonUtil.response(req, resp, 500, "Detection error!");
             }
 
         }
     }
 
-    private void response(HttpServletRequest req, HttpServletResponse resp, int code, String msg) {
-        result.setCode(code);
-        result.setMsg(msg);
-        resp.setCharacterEncoding("UTF-8");
-        resp.setContentType("application/json; charset=utf-8");
-        PrintWriter out = null;
-        try {
-            out = resp.getWriter();
-            out.print(req.getParameter("callback") + "(" + new Gson().toJson(result) + ")");
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (out != null) {
-                out.close();
-            }
-        }
-    }
 
     private void initDetect(String id, GPS startPoint, GPS endPoint) {
         idSet.add(id);
@@ -124,7 +101,7 @@ public class OnlineDetect extends HttpServlet {
 
             String content = new Gson().toJson(compress(allTrajectoriesGPS, startCell, endCell));
             try {
-                FileUtils.write(file, content, false);
+                FileUtils.write(file, content, "UTF-8", false);
             } catch (IOException e) {
                 e.printStackTrace();
             }

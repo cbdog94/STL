@@ -1,0 +1,145 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>历史轨迹</title>
+    <!-- 引入 echarts.js -->
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript"
+            src="https://api.map.baidu.com/api?v=3.0&ak=TGVn20r8ILbAE5iLGVfGUmwqIoPBenya"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.1.0/echarts.min.js"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.1.0/extension/bmap.min.js"></script>
+    <script src="tool.js"></script>
+</head>
+
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div id="main" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+<script type="text/javascript">
+    function getQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]);
+        return null;
+    }
+
+    var myChart = echarts.init(document.getElementById('main'));
+    $.ajax({
+        //要用post方式
+        type: "Post",
+        //方法所在页面和方法名
+        url: "${filename}",
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        data: {},
+        error: function (XMLHttpRequest) {
+            console.log(XMLHttpRequest);
+            console.log(XMLHttpRequest.readyState);
+        },
+        success: function (data) {
+            var lines = data.map(function (track) {
+                var prevPt, points = [];
+                for (var i = 0; i < track.length; i += 2) {
+                    var pt = [track[i], track[i + 1]];
+                    if (i > 0) {
+                        pt = [
+                            prevPt[0] + pt[0],
+                            prevPt[1] + pt[1]
+                        ];
+                    }
+                    prevPt = pt;
+                    var transform = wgs2bd(pt[0] / 1e6, pt[1] / 1e6);
+                    points.push([transform[1], transform[0]]);
+                }
+                return {
+                    coords: points,
+                    lineStyle: {normal: {color: '#FF0000'}}
+                };
+            });
+            console.log(lines.length);
+            myChart.setOption(option = {
+                bmap: {
+                    center: [121.4780, 31.2369],
+                    zoom: 14,
+                    roam: true,
+                    mapStyle: {
+                        styleJson: [
+                            {
+                                'featureType': 'green',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            }, {
+                                'featureType': 'subway',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            },
+                            {
+                                'featureType': 'local',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#d1d1d1'
+                                }
+                            }, {
+                                'featureType': 'arterial',
+                                'elementType': 'labels',
+                                'stylers': {
+                                    'visibility': 'off'
+                                }
+                            }, {
+                                'featureType': 'boundary',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#fefefe'
+                                }
+                            }, {
+                                'featureType': 'building',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#d1d1d1'
+                                }
+                            },
+                            {
+                                'featureType': 'highway',
+                                'elementType': 'all',
+                                'stylers': {
+                                    'color': '#fdfdfd'
+                                }
+                            },
+                            {
+                                'featureType': 'label',
+                                'elementType': 'labels.text.fill',
+                                'stylers': {
+                                    'color': '#999999'
+                                }
+                            }
+                        ]
+                    }
+                },
+                series: [{
+                    type: 'lines',
+                    coordinateSystem: 'bmap',
+                    data: lines,
+                    polyline: true,
+                    lineStyle: {
+                        normal: {
+                            color: 'purple',
+                            opacity: 0.6,
+                            width: 1
+                        }
+                    },
+                    progressiveThreshold: 500,
+                    progressive: 200
+                }]
+            });
+        }
+    });
+</script>
+</body>
+
+</html>

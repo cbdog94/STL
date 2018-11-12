@@ -24,8 +24,8 @@ public class STLOp {
     private Boolean debug = false;
 //    @Parameter(names = {"--degree", "-deg"}, description = "Model complexity.")
 //    private int degree = 3;
-//    @Parameter(names = {"-tT"}, description = "Threshold of time.")
-//    private double thresholdTime = 0.7;
+@Parameter(names = {"-t"}, description = "Threshold of size.")
+private double threshold = 0.8;
 //    @Parameter(names = {"-tD"}, description = "Threshold of distance.")
 //    private double thresholdDist = 0.7;
 
@@ -51,7 +51,6 @@ public class STLOp {
         // Origin trajectory.
         Map<String, List<GPS>> trajectoryGPS = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, city);
         System.out.println("trajectoryGPS size: " + trajectoryGPS.size());
-
         // Trajectory info.
         Map<String, double[]> trajectoryInfoMap = Maps.transformValues(trajectoryGPS, s -> CommonUtil.trajectoryInfo(s, city));
 
@@ -59,35 +58,42 @@ public class STLOp {
         double[] distArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[0]).toArray();
         double[] timeArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[1]).toArray();
 
-        double distance60 = CommonUtil.percentile(distArray, 0.8);
-        double time60 = CommonUtil.percentile(timeArray, 0.8);
-
+        double distance60 = CommonUtil.percentile(distArray, 0.5);
+        double time60 = CommonUtil.percentile(timeArray, 0.5);
+        double distance95 = CommonUtil.percentile(distArray, 0.90);
+        double time95 = CommonUtil.percentile(timeArray, 0.90);
+//        System.out.println(distance95 + " " + time95);
         Map<String, List<GPS>> trainTrajectory = Maps.filterKeys(trajectoryGPS, Maps.filterValues(trajectoryInfoMap, s -> s[0] < distance60 || s[1] < time60)::containsKey);
         System.out.println("Train set size:" + trainTrajectory.size());
 
         // Anomaly Label.
         Set<String> anomalyTrajectory = CommonUtil.anomalyTrajectory(trajectoryGPS, city, debug);
+//        Map<String, double[]> tmp2 = Maps.filterValues(trajectoryInfoMap, s -> s[0] > distance95 && s[1] > time95);
+//        tmp2.forEach((x, y) -> System.out.println(x + " " + Arrays.toString(y)));
+//        Set<String> anomalyTrajectory = tmp2.keySet();
 
 
         // Detection
         long start = System.currentTimeMillis();
         STLOpDetection stl = new STLOpDetection();
-        Map<String, Double> anomalyScore = Maps.transformEntries(trajectoryGPS, (x, y) -> {
-            Map<String, List<GPS>> tmp = new HashMap<>(trajectoryGPS);
-            tmp.remove(x);
-            return stl.detect(new ArrayList<>(tmp.values()), y);
-        });
-        List<Map.Entry<String, Double>> anomalyScoreSorted = anomalyScore.entrySet().stream().sorted((x, y) -> Double.compare(y.getValue(), x.getValue())).collect(Collectors.toList());
-        Set<String> STLAnomaly = anomalyScoreSorted.stream().limit((int) (trajectoryGPS.size() * 0.05)).map(Map.Entry::getKey).collect(Collectors.toSet());
+        Map<String, Double> anomalyScore = trajectoryGPS.entrySet().parallelStream().collect(Collectors.toMap(Map.Entry::getKey, e -> {
+            Map<String, List<GPS>> tmp = new HashMap<>(trainTrajectory);
+            tmp.remove(e.getKey());
+            return stl.detect(new ArrayList<>(tmp.values()), e.getValue());
+        }));
         long end = System.currentTimeMillis();
 
-        Map<String, Integer> anomalyRank = new HashMap<>();
-        for (int i = 0; i < anomalyScoreSorted.size(); i++) {
-            anomalyRank.put(anomalyScoreSorted.get(i).getKey(), i + 1);
-        }
-        for (String id : anomalyTrajectory) {
-            System.out.println(id + " " + anomalyRank.get(id));
-        }
+        List<Map.Entry<String, Double>> anomalyScoreSorted = anomalyScore.entrySet().stream().sorted((x, y) -> Double.compare(y.getValue(), x.getValue())).collect(Collectors.toList());
+        Set<String> STLAnomaly = anomalyScoreSorted.stream().limit((int) (anomalyScoreSorted.size() * threshold)).map(Map.Entry::getKey).collect(Collectors.toSet());
+
+//        Map<String, Integer> anomalyRank = new HashMap<>();
+//        for (int i = 0; i < anomalyScoreSorted.size(); i++) {
+//            anomalyRank.put(anomalyScoreSorted.get(i).getKey(), i + 1);
+//        }
+//        for (String id : anomalyTrajectory) {
+//            System.out.println(id + " " + anomalyRank.get(id));
+//        }
+
         // Evaluation.
         int TP = Sets.intersection(anomalyTrajectory, STLAnomaly).size();
         int FP = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), STLAnomaly).size();

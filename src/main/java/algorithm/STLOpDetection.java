@@ -7,6 +7,7 @@ import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import util.CommonUtil;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -19,26 +20,17 @@ import java.util.stream.Collectors;
  */
 public class STLOpDetection {
 
-    //    private static final int DEGREE = 3;
-//    private static final double THRESHOLD = 0.9;
     private static Map<Integer, Map<Integer, NormalDistribution>> cacheDisplacementModel = new ConcurrentHashMap<>();
     private static Map<Integer, Map<Integer, NormalDistribution>> cacheDistanceModel = new ConcurrentHashMap<>();
     private static Map<Integer, Map<Integer, NormalDistribution>> cacheTimeModel = new ConcurrentHashMap<>();
-//    private static Map<Integer, double[]> cacheWD = new ConcurrentHashMap<>();
-//    private static Map<Integer, Double> cacheET = new ConcurrentHashMap<>();
-//    private static Map<Integer, Double> cacheED = new ConcurrentHashMap<>();
-//
-//    public static double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory) {
-//        return detect(allNormalTrajectories, testTrajectory, THRESHOLD, THRESHOLD, DEGREE);
-//    }
 
     private List<List<GPS>> filterByTime(List<List<GPS>> allNormalTrajectories, int startHour) {
         Calendar calendar = GregorianCalendar.getInstance();
         return allNormalTrajectories.stream().filter(x -> {
             calendar.setTime(x.get(0).getTimestamp());
             int currentStartHour = calendar.get(Calendar.HOUR_OF_DAY);
-            return currentStartHour < startHour - 1 ||
-                    currentStartHour > startHour + 1;
+            return currentStartHour >= startHour - 1 &&
+                    currentStartHour <= startHour + 1;
         }).collect(Collectors.toList());
     }
 
@@ -47,8 +39,8 @@ public class STLOpDetection {
         double totalDistance = 0, totalTime = 0;
         for (GPS point : trajectory) {
             double displacement = CommonUtil.distanceBetween(point, startPoint);
-            totalDistance += CommonUtil.distanceBetween(lastPoint, startPoint);
-            totalTime += CommonUtil.timeBetween(lastPoint, startPoint);
+            totalDistance += CommonUtil.distanceBetween(lastPoint, point);
+            totalTime += CommonUtil.timeBetween(lastPoint, point);
             lastPoint = point;
             double endDisplacement = CommonUtil.distanceBetween(point, endPoint);
 
@@ -72,14 +64,17 @@ public class STLOpDetection {
         double[] array = list.stream().mapToDouble(x -> x).toArray();
         double mean = new Mean().evaluate(array);
         double std = new StandardDeviation().evaluate(array, mean);
+        if (std == 0) {
+            return null;
+        }
         return new NormalDistribution(mean, std);
     }
 
     public double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory) {
+        return detect(allNormalTrajectories, testTrajectory, new ArrayList<>(testTrajectory.size()), false);
+    }
 
-        List<Double> linearDistance = new ArrayList<>();//x
-        List<Double> intervals = new ArrayList<>();//y
-        List<Double> totalDistance = new ArrayList<>();//y2
+    public double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory, List<AnomalyInfo> anomalyInfoList, boolean debug) {
 
         Map<Integer, NormalDistribution> distanceModel, timeModel, displacementModel;
 
@@ -90,37 +85,7 @@ public class STLOpDetection {
 
         // No cached.
         if (!cacheDisplacementModel.containsKey(testStartHour)) {
-
-            //get LDT of each point
-//            for (List<GPS> oneTrajectory : allNormalTrajectories) {
-//                GPS startPoint = oneTrajectory.get(0);
-//                GPS lastPoint = oneTrajectory.get(0);
-//                drivingDist = 0;
-//
-//                //get start hour
-//                calendar.setTime(startPoint.getTimestamp());
-//                int currentStartHour = calendar.get(Calendar.HOUR_OF_DAY);
-//
-//                //filter
-//                if (currentStartHour < testStartHour - 1 ||
-//                        currentStartHour > testStartHour + 1)
-//                    continue;
-//
-//                for (GPS currentPoint : oneTrajectory) {
-//                    linearDist = CommonUtil.distanceBetween(startPoint, currentPoint);
-//                    segment = CommonUtil.distanceBetween(lastPoint, currentPoint);
-//                    drivingTime = (currentPoint.getTimestamp().getTime() - startPoint.getTimestamp().getTime()) / 1000;
-//                    drivingDist += segment;
-//                    linearDistance.add(linearDist);
-//                    intervals.add(drivingTime);
-//                    totalDistance.add(drivingDist);
-//
-//                    lastPoint = currentPoint;
-//                }
-//            }
-
             Map<Integer, List<Double>> distanceMap = new ConcurrentHashMap<>(), timeMap = new ConcurrentHashMap<>(), displacementMap = new ConcurrentHashMap<>();
-
             List<List<GPS>> filterTrajectory = filterByTime(allNormalTrajectories, testStartHour);
             //calculate the x,d,t
             filterTrajectory.forEach(x -> process(x, distanceMap, timeMap, displacementMap));
@@ -129,36 +94,6 @@ public class STLOpDetection {
             timeModel = Maps.transformValues(timeMap, this::gaussianModel);
             displacementModel = Maps.transformValues(displacementMap, this::gaussianModel);
 
-//            (linearDistance.size() == 0) {
-//                System.out.println("no train set!");
-//                return 1;
-//            }
-//
-//            //Fitted the data set by maximum likelihood estimation
-//            double[][] x = new double[linearDistance.size()][degree + 1];
-//            for (int i = 0; i < linearDistance.size(); i++) {
-//                for (int j = 0; j < degree + 1; j++) {
-//                    x[i][j] = Math.pow(linearDistance.get(i), j);
-//                }
-//            }
-//
-//            double[] t = new double[intervals.size()];
-//            double[] d = new double[totalDistance.size()];
-//            for (int i = 0; i < intervals.size(); i++) {
-//                t[i] = intervals.get(i);
-//                d[i] = totalDistance.get(i);
-//            }
-//
-//            RealMatrix X = MatrixUtils.createRealMatrix(x);
-//            RealMatrix T = MatrixUtils.createColumnRealMatrix(t);
-//            RealMatrix D = MatrixUtils.createColumnRealMatrix(d);
-//            RealMatrix XT = X.transpose();
-//            RealMatrix TT = T.transpose();
-//            RealMatrix DT = D.transpose();
-//            wt = MatrixUtils.inverse(XT.multiply(X)).multiply(XT).multiply(T).getColumn(0);
-//            wd = MatrixUtils.inverse(XT.multiply(X)).multiply(XT).multiply(D).getColumn(0);
-//            et = (TT.multiply(T).subtract(TT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wt)))).getEntry(0, 0) / x.length;
-//            ed = (DT.multiply(D).subtract(DT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wd)))).getEntry(0, 0) / x.length;
             synchronized (STLOpDetection.class) {
                 cacheDistanceModel.put(testStartHour, distanceModel);
                 cacheTimeModel.put(testStartHour, timeModel);
@@ -172,17 +107,13 @@ public class STLOpDetection {
             }
         }
 
-//        PolynomialFunction polyT = new PolynomialFunction(wt);
-//        PolynomialFunction polyD = new PolynomialFunction(wd);
-
-        //detect the incoming trajectory
-//        List<GPS> anomalyPoints = new ArrayList<>();
         double anomalyScore = 0;
         GPS startPos = testTrajectory.get(0), lastPos = testTrajectory.get(0), endPos = testTrajectory.get(testTrajectory.size() - 1);
         double drivingDist = 0, segment, drivingTime, endDisplacement;
         NormalDistribution curDisplacementModel, curDistanceModel, curTimeModel;
         double anomalyDisplacement, anomalyDistance, anomalyTime, meanAnomaly;
         int bucket;
+
 
         for (GPS gps : testTrajectory) {
             bucket = (int) (CommonUtil.distanceBetween(startPos, gps) / 100);
@@ -195,22 +126,51 @@ public class STLOpDetection {
             curDisplacementModel = displacementModel.get(bucket);
             curDistanceModel = distanceModel.get(bucket);
             curTimeModel = timeModel.get(bucket);
-            anomalyDisplacement = endDisplacement < curDisplacementModel.getMean() ? 0 : 1 - curDisplacementModel.density(endDisplacement) / curDisplacementModel.density(curDisplacementModel.getMean());
-            anomalyDistance = drivingDist < curDistanceModel.getMean() ? 0 : 1 - curDistanceModel.density(drivingDist) / curDistanceModel.density(curDistanceModel.getMean());
-            anomalyTime = drivingTime < curTimeModel.getMean() ? 0 : 1 - curTimeModel.density(drivingTime) / curTimeModel.density(curTimeModel.getMean());
-            meanAnomaly = (anomalyDistance + anomalyDisplacement + anomalyTime) / 3;
+            if (curDisplacementModel != null && curDistanceModel != null && curTimeModel != null) {
+                anomalyDisplacement = endDisplacement < curDisplacementModel.getMean() ? 0 : 1 - curDisplacementModel.density(endDisplacement) / curDisplacementModel.density(curDisplacementModel.getMean());
+                anomalyDistance = drivingDist < curDistanceModel.getMean() ? 0 : 1 - curDistanceModel.density(drivingDist) / curDistanceModel.density(curDistanceModel.getMean());
+                anomalyTime = drivingTime < curTimeModel.getMean() ? 0 : 1 - curTimeModel.density(drivingTime) / curTimeModel.density(curTimeModel.getMean());
+                meanAnomaly = (Math.min(anomalyDistance, anomalyTime) + anomalyDisplacement) / 2;
+                anomalyScore += segment * meanAnomaly;
+                anomalyInfoList.add(new AnomalyInfo(gps, anomalyDisplacement, anomalyDistance, anomalyTime, segment * meanAnomaly));
+                if (debug) {
+                    System.out.println(bucket);
+                    System.out.println("Displacement Model:");
+                    System.out.println("Mean:" + curDisplacementModel.getMean() + " Std:" + curDisplacementModel.getStandardDeviation());
+                    System.out.println("Cur:" + endDisplacement);
+                    System.out.println("Distance Model:");
+                    System.out.println("Mean:" + curDistanceModel.getMean() + " Std:" + curDistanceModel.getStandardDeviation());
+                    System.out.println("Cur:" + drivingDist);
+                    System.out.println("Time Model:");
+                    System.out.println("Mean:" + curTimeModel.getMean() + " Std:" + curTimeModel.getStandardDeviation());
+                    System.out.println("Cur:" + drivingTime);
+                    System.out.println();
+                }
+            }
 
-//            double cdfT = new NormalDistribution(predictT, Math.sqrt(et)).cumulativeProbability(drivingTime);
-//            double cdfD = new NormalDistribution(predictD, Math.sqrt(ed)).cumulativeProbability(drivingDist);
-//
-//            if (cdfT > thresholdTime && cdfD > thresholdDist)
-//                anomalyPoints.add(gps);
-
-            anomalyScore += segment * meanAnomaly;
             lastPos = gps;
         }
-
         return anomalyScore;
+    }
+
+    public static class AnomalyInfo implements Serializable {
+        double latitude;
+        double longitude;
+        Date timestamp;
+        double anomalyDisplacement;
+        double anomalyDistance;
+        double anomalyTime;
+        double anomalyScore;
+
+        AnomalyInfo(GPS gps, double anomalyDisplacement, double anomalyDistance, double anomalyTime, double anomalyScore) {
+            this.latitude = gps.getLatitude();
+            this.longitude = gps.getLongitude();
+            this.timestamp = gps.getTimestamp();
+            this.anomalyDisplacement = anomalyDisplacement;
+            this.anomalyDistance = anomalyDistance;
+            this.anomalyTime = anomalyTime;
+            this.anomalyScore = anomalyScore;
+        }
     }
 
 }

@@ -8,6 +8,7 @@ import util.TileSystem;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The methods of getting trajectory.
@@ -28,13 +29,13 @@ public class TrajectoryUtil {
                 HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
                 HBaseConstant.COLUMN_GPS);
 
-        String[] tileSplits = result.substring(1, result.length() - 1).split(", ");
-
-        List<GPS> tileList = new ArrayList<>();
-        for (String tile : tileSplits) {
-            tileList.add(new GPS(tile));
-        }
-        return tileList;
+        String[] gpsSplits = result.substring(1, result.length() - 1).split(", ");
+//        Stream.of(gpsSplits).map(x->new GPS(x)).collect(Collectors.toList())
+//        List<GPS> tileList = new ArrayList<>();
+//        for (String tile : tileSplits) {
+//            tileList.add(new GPS(tile));
+//        }
+        return Stream.of(gpsSplits).map(GPS::new).collect(Collectors.toList());
     }
 
     /**
@@ -96,7 +97,7 @@ public class TrajectoryUtil {
      * @param start start point
      * @param end   end point
      */
-    public static Set<String> getAllTrajectoryID(Cell start, Cell end, String city) {
+    private static Set<String> getAllTrajectoryID(Cell start, Cell end, String city) {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
                 CommonUtil.getInvertedTable(city),
                 start.toString().getBytes(),
@@ -146,20 +147,18 @@ public class TrajectoryUtil {
         return allTrajectories;
     }
 
-    private static List<GPS> removeExtraGPS(List<GPS> gpsTrajectory, Cell start, Cell end) {
-        int startIndex = 0, endIndex = 0;
-        boolean startFound = false, endFound = false;
+    public static List<GPS> removeExtraGPS(List<GPS> gpsTrajectory, Cell start, Cell end) {
+        int startIndex = -1, endIndex = -1;
         for (int i = 0; i < gpsTrajectory.size(); i++) {
             if (TileSystem.GPSToTile(gpsTrajectory.get(i)).equals(start)) {
                 startIndex = i;
-                startFound = true;
             } else if (TileSystem.GPSToTile(gpsTrajectory.get(i)).equals(end)) {
                 endIndex = i;
-                endFound = true;
+                break;
             }
         }
         try {
-            if (startFound && endFound)
+            if (startIndex != -1 && endIndex != -1)
                 return gpsTrajectory.subList(startIndex, endIndex);
             else
                 return null;
