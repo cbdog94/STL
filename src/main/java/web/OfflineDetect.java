@@ -65,22 +65,10 @@ public class OfflineDetect extends HttpServlet {
         Cell startCell = TileSystem.GPSToTile(startPoint);
         Cell endCell = TileSystem.GPSToTile(endPoint);
 
+        System.out.println(startCell + " " + endCell);
+
         //First step，得到经过起止点所有轨迹
         Map<String, List<Cell>> allTrajectories = TrajectoryUtil.getAllTrajectoryCells(startCell, endCell, "SH");
-//        Set<String> allTrajectoryID = TrajectoryUtil.getAllTrajectoryID(startPoint, endPoint);
-//        List<List<Cell>> allTrajectoryCell = TrajectoryUtil.getAllTrajectoryCell(allTrajectoryID);
-
-//        final List<List<GPS>>[] allTrajectoryGPS = new List[0];
-//
-//        Thread thread = new Thread(() -> allTrajectoryGPS[0] = TrajectoryUtil.getAllTrajectoryGPS(allTrajectories.keySet()));
-//        thread.start();
-//
-//        //等待子线程
-//        try {
-//            thread.join();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
 
         List<TrajectoryInfo> iBOATTrajectoryInfo = new ArrayList<>();
         List<TrajectoryInfo> iBOATNormalTrajectoryInfo = new ArrayList<>();

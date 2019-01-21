@@ -8,6 +8,7 @@ import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import hbase.TrajectoryUtil;
+import org.apache.commons.math3.stat.StatUtils;
 import util.CommonUtil;
 
 import java.util.*;
@@ -22,10 +23,10 @@ public class STLOp {
     private String city;
     @Parameter(names = {"--debug", "-d"}, description = "Debug mode.")
     private Boolean debug = false;
-//    @Parameter(names = {"--degree", "-deg"}, description = "Model complexity.")
+    //    @Parameter(names = {"--degree", "-deg"}, description = "Model complexity.")
 //    private int degree = 3;
-@Parameter(names = {"-t"}, description = "Threshold of size.")
-private double threshold = 0.8;
+    @Parameter(names = {"-t"}, description = "Threshold of size.")
+    private double threshold = 0.8;
 //    @Parameter(names = {"-tD"}, description = "Threshold of distance.")
 //    private double thresholdDist = 0.7;
 
@@ -58,10 +59,10 @@ private double threshold = 0.8;
         double[] distArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[0]).toArray();
         double[] timeArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[1]).toArray();
 
-        double distance60 = CommonUtil.percentile(distArray, 0.5);
-        double time60 = CommonUtil.percentile(timeArray, 0.5);
-        double distance95 = CommonUtil.percentile(distArray, 0.90);
-        double time95 = CommonUtil.percentile(timeArray, 0.90);
+        double distance60 = StatUtils.percentile(distArray, 50);
+        double time60 = StatUtils.percentile(timeArray, 50);
+        double distance95 = StatUtils.percentile(distArray, 90);
+        double time95 = StatUtils.percentile(timeArray, 90);
 //        System.out.println(distance95 + " " + time95);
         Map<String, List<GPS>> trainTrajectory = Maps.filterKeys(trajectoryGPS, Maps.filterValues(trajectoryInfoMap, s -> s[0] < distance60 || s[1] < time60)::containsKey);
         System.out.println("Train set size:" + trainTrajectory.size());

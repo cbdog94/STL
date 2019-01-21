@@ -24,7 +24,7 @@ public class OneTrajectory extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        String id = request.getParameter("id");
+        String id = request.getParameter("id");//4f8c6acda9ff432fa29d118b6a339e67
         if (id == null || id.equals("")) {
             request.setAttribute("error", "Please input id!");
             response.setStatus(400);
@@ -36,6 +36,8 @@ public class OneTrajectory extends HttpServlet {
         String filename = "trajectory_" + id;
 
         List<GPS> trajectory = TrajectoryUtil.getTrajectoryGPSPoints(id);
+
+
         if (start != null && !start.equals("") && end != null && !end.equals("")) {
             trajectory = TrajectoryUtil.removeExtraGPS(trajectory, new Cell(start), new Cell(end));
             filename += ("_" + start + "_" + end);

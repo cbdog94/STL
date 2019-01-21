@@ -115,6 +115,12 @@
             <version>1.71</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.sh0nk</groupId>
+            <artifactId>matplotlib4j</artifactId>
+            <version>0.4.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -122,7 +128,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.3</version>
+                <!--<version>3.3</version>-->
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -131,7 +137,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
+                <!--<version>3.0.0</version>-->
                 <executions>
                     <execution>
                         <phase>package</phase>

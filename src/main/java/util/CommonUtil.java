@@ -5,8 +5,7 @@ import bean.GPS;
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.ParameterException;
 import constant.HBaseConstant;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.commons.math3.stat.StatUtils;
 
 import java.io.*;
 import java.util.*;
@@ -163,23 +162,7 @@ public class CommonUtil {
 
     }
 
-    /**
-     * 计算分位数
-     */
-    public static double percentile(double[] data, double p) {
-        int n = data.length;
-        Arrays.sort(data);
-        double px = p * (n - 1);
-        int i = (int) java.lang.Math.floor(px);
-        double g = px - i;
-        if (g == 0) {
-            return data[i];
-        } else {
-            return (1 - g) * data[i] + g * data[i + 1];
-        }
-    }
 
-    private static final double DISTANCE_LIMIT = 65 * 1000;
 
     public static String getTrajectoryTable(String city) {
         switch (city) {
@@ -228,33 +211,6 @@ public class CommonUtil {
             }
         }
     }
-
-    /**
-     * Map the GPS trajectory to Cell trajectory, and convert the form of data so that it can be inserted into HBase.
-     */
-    public static Put preProcessTrajectory(String taxiID, List<GPS> trajectory) {
-
-        //ignore while the trajectory is too long.
-        double distance = util.CommonUtil.trajectoryDistance(trajectory);
-        if (distance > DISTANCE_LIMIT)
-            return null;
-
-        //generate grid cell trajectory.
-        List<Cell> cells = GridUtil.gridGPSSequence(trajectory);
-
-        //if the number of cells are less than 5, we suppose that this trajectory is noise data.
-        if (cells.size() < 5)
-            return null;
-
-        Put put = new Put(Bytes.toBytes(util.CommonUtil.getUUID()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID, Bytes.toBytes(taxiID));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_CELL, Bytes.toBytes(cells.toString()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_GPS, Bytes.toBytes(trajectory.toString()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_DISTANCE, Bytes.toBytes(distance));
-        return put;
-
-    }
-
 
     public static void saveObjToFile(Object o, String fileName) {
         try {
@@ -329,7 +285,7 @@ public class CommonUtil {
         for (Map.Entry<String, List<GPS>> entry : originTrajectory.entrySet()) {
             fareMap.put(entry.getKey(), trajectoryInfo(entry.getValue(), city)[2]);
         }
-        double threshold = percentile(fareMap.values().stream().mapToDouble(s -> s).toArray(), 0.95);
+        double threshold = StatUtils.percentile(fareMap.values().stream().mapToDouble(s -> s).toArray(), 95);
         if (debug) {
             System.out.println("Fare List: " + fareMap.values());
             System.out.println("Fare threshold: " + threshold);

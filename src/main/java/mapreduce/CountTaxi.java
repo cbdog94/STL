@@ -18,6 +18,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import util.CommonUtil;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * build inverted index by the trajectory set.
@@ -76,7 +77,7 @@ public class CountTaxi {
         private static int total = 0;
 
         @Override
-        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) {
             total++;
         }
 
@@ -96,7 +97,7 @@ public class CountTaxi {
 
         @Override
         public void map(ImmutableBytesWritable row, Result value, Context context) throws InterruptedException, IOException {
-            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID));
+            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_ID.getBytes(StandardCharsets.UTF_8)));
             mapKey.set(taxiId);
             context.write(mapKey, mapValue);
         }

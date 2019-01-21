@@ -8,6 +8,7 @@ import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import hbase.TrajectoryUtil;
+import org.apache.commons.math3.stat.StatUtils;
 import util.CommonUtil;
 
 import java.util.*;
@@ -59,8 +60,8 @@ public class TimeSlot {
         double[] distArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[0]).toArray();
         double[] timeArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[1]).toArray();
 
-        double distance60 = CommonUtil.percentile(distArray, 0.6);
-        double time60 = CommonUtil.percentile(timeArray, 0.6);
+        double distance60 = StatUtils.percentile(distArray, 60);
+        double time60 = StatUtils.percentile(timeArray, 60);
 
         Map<String, List<GPS>> trainTrajectory = Maps.filterKeys(trajectoryGPS, Maps.filterValues(trajectoryInfoMap, s -> s[0] < distance60 || s[1] < time60)::containsKey);
         System.out.println("Train set size:" + trainTrajectory.size());
@@ -72,14 +73,14 @@ public class TimeSlot {
         // Detection
         long start = System.currentTimeMillis();
 
-        Set<String> STLAnomaly =  new HashSet<>(trajectoryGPS.entrySet().parallelStream()
+        Set<String> STLAnomaly = trajectoryGPS.entrySet().parallelStream()
                 .filter(entry -> {
                             Map<String, List<GPS>> tmp = new HashMap<>(trajectoryGPS);
                             tmp.remove(entry.getKey());
                             double score = STLDetection.detect(new ArrayList<>(tmp.values()), entry.getValue(), thresholdTime, thresholdDist, degree);
                             return score > 0.1;
                         }
-                ).map(Map.Entry::getKey).collect(Collectors.toSet()));
+                ).map(Map.Entry::getKey).collect(Collectors.toSet());
 //        System.out.println(STLAnomaly.size());
         long end = System.currentTimeMillis();
 

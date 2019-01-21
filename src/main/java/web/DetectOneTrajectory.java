@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import hbase.HBaseUtil;
 import hbase.TrajectoryUtil;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.stat.StatUtils;
 import util.CommonUtil;
 
 import javax.servlet.ServletException;
@@ -53,8 +54,8 @@ public class DetectOneTrajectory extends HttpServlet {
         double[] distArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[0]).toArray();
         double[] timeArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[1]).toArray();
 
-        double distance60 = CommonUtil.percentile(distArray, 0.6);
-        double time60 = CommonUtil.percentile(timeArray, 0.6);
+        double distance60 = StatUtils.percentile(distArray, 60);
+        double time60 = StatUtils.percentile(timeArray, 60);
 
         Map<String, List<GPS>> trainTrajectory = Maps.filterKeys(trajectoryGPS, Maps.filterValues(trajectoryInfoMap, s -> s[0] < distance60 && s[1] < time60)::containsKey);
         System.out.println("Train set size:" + trainTrajectory.size());

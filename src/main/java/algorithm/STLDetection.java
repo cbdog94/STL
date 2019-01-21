@@ -63,7 +63,7 @@ public class STLDetection {
                 for (GPS currentPoint : oneTrajectory) {
                     linearDist = CommonUtil.distanceBetween(startPoint, currentPoint);
                     segment = CommonUtil.distanceBetween(lastPoint, currentPoint);
-                    drivingTime = (currentPoint.getTimestamp().getTime() - startPoint.getTimestamp().getTime()) / 1000;
+                    drivingTime = CommonUtil.timeBetween(startPoint, currentPoint);
                     drivingDist += segment;
                     linearDistance.add(linearDist);
                     intervals.add(drivingTime);
@@ -130,7 +130,7 @@ public class STLDetection {
         for (GPS gps : testTrajectory) {
             linearDist = CommonUtil.distanceBetween(startPos, gps);
             segment = CommonUtil.distanceBetween(lastPos, gps);
-            drivingTime = (gps.getTimestamp().getTime() - startTime.getTime()) / 1000;
+            drivingTime = CommonUtil.timeBetween(gps, startPos);
             drivingDist += segment;
             double predictT = polyT.value(linearDist);
             double predictD = polyD.value(linearDist);
@@ -138,14 +138,20 @@ public class STLDetection {
             double cdfT = new NormalDistribution(predictT, Math.sqrt(et)).cumulativeProbability(drivingTime);
             double cdfD = new NormalDistribution(predictD, Math.sqrt(ed)).cumulativeProbability(drivingDist);
 
+            double anomalyT = drivingTime < predictT ? 0 : 1 - new NormalDistribution(predictT, Math.sqrt(et)).density(drivingTime) / new NormalDistribution(predictT, Math.sqrt(et)).density(predictT);
+            double anomalyD = drivingDist < predictD ? 0 : 1 - new NormalDistribution(predictD, Math.sqrt(ed)).density(drivingDist) / new NormalDistribution(predictD, Math.sqrt(ed)).density(predictD);
+//            System.out.println(anomalyT + " " + anomalyD);
+//            System.out.println(Math.min(anomalyT, anomalyD));
+//            System.out.println("-----------");
+
             if (cdfT > thresholdTime && cdfD > thresholdDist)
                 anomalyPoints.add(gps);
 
-            anomalyScore += segment / (1 + Math.exp(100 * Math.max(thresholdTime - cdfT, thresholdDist - cdfD)));
-
+//            anomalyScore += segment / (1 + Math.exp(100 * Math.max(thresholdTime - cdfT, thresholdDist - cdfD)));
+            anomalyScore += segment * Math.min(anomalyT, anomalyD);
             lastPos = gps;
         }
-
+        System.out.println(anomalyScore);
         return anomalyPoints.size() * 1.0 / testTrajectory.size();
     }
 

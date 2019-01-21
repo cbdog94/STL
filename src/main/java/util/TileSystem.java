@@ -13,7 +13,7 @@ public class TileSystem {
     private static final double MIN_LONGITUDE = -180;
     private static final double MAX_LONGITUDE = 180;
 
-    private static final int DEFAULT_LEVEL = 17;
+    private static final int DEFAULT_LEVEL = 15;
 
 
     /**
@@ -35,7 +35,7 @@ public class TileSystem {
      * @param levelOfDetail Level of detail, from 1 (lowest detail) to 23 (highest detail).
      * @return The map width and height in pixels.
      */
-    public static long mapSize(int levelOfDetail) {
+    private static long mapSize(int levelOfDetail) {
         return 256 << levelOfDetail;
     }
 
@@ -77,7 +77,7 @@ public class TileSystem {
      * @param levelOfDetail Level of detail, from 1 (lowest detail) to 23 (highest detail).
      * @return an array of PixelXY, index 0 is PixelX, index 1 is PixelY
      */
-    public static int[] latLongToPixelXY(double latitude, double longitude, int levelOfDetail) {
+    private static int[] latLongToPixelXY(double latitude, double longitude, int levelOfDetail) {
         latitude = clip(latitude, MIN_LATITUDE, MAX_LATITUDE);
         longitude = clip(longitude, MIN_LONGITUDE, MAX_LONGITUDE);
 
@@ -102,7 +102,7 @@ public class TileSystem {
      * @param levelOfDetail Level of detail, from 1 (lowest detail) to 23 (highest detail).
      * @return an array of LatLong, index 0 is latitude, index 1 is longitude
      */
-    public static double[] pixelXYToLatLong(int pixelX, int pixelY, int levelOfDetail) {
+    private static double[] pixelXYToLatLong(int pixelX, int pixelY, int levelOfDetail) {
         double mapSize = mapSize(levelOfDetail);
         double x = (clip(pixelX, 0, mapSize - 1) / mapSize) - 0.5;
         double y = 0.5 - (clip(pixelY, 0, mapSize - 1) / mapSize);
@@ -122,7 +122,7 @@ public class TileSystem {
      * @param pixelY Pixel Y coordinate.
      * @return an array of TileXY, index 0 is tileX, index 1 is tileY
      */
-    public static int[] pixelXYToTileXY(int pixelX, int pixelY) {
+    private static int[] pixelXYToTileXY(int pixelX, int pixelY) {
         int tileX = pixelX / 256;
         int tileY = pixelY / 256;
         return new int[]{tileX, tileY};
@@ -137,7 +137,7 @@ public class TileSystem {
      * @param tileY Cell Y coordinate.
      * @return an array of PixelXY, index 0 is pixelX, index 1 is pixelY
      */
-    public static int[] tileXYToPixelXY(int tileX, int tileY) {
+    private static int[] tileXYToPixelXY(int tileX, int tileY) {
         int pixelX = tileX * 256;
         int pixelY = tileY * 256;
         return new int[]{pixelX, pixelY};
@@ -233,14 +233,19 @@ public class TileSystem {
     }
 
     public static void main(String[] args) {
-        int[] tileXY = latLongToTileXY(31.23607, 121.50878);
-        int[] tileXY2 = latLongToTileXY(31.21584,121.55732);
-        System.out.println(tileXY[0] + "," + tileXY[1]);
-        System.out.println(tileXY2[0] + "," + tileXY2[1]);
-        tileXY = latLongToTileXY(31.20641,121.59598);
-        tileXY2 = latLongToTileXY(31.24773,121.44903);
-        System.out.println(tileXY[0] + "," + tileXY[1]);
-        System.out.println(tileXY2[0] + "," + tileXY2[1]);
+//        [109708,53571] [109883,53589]
+        System.out.println(TileToGPS(new Cell("[109715,53587]")));
+//        System.out.println(TileToGPS(new Cell("[109706,53571]")));
+        System.out.println(GPSToTile(new GPS(31.1716, 121.5814, null)));
+        System.out.println(CommonUtil.distanceBetween(TileToGPS(new Cell("[27450,13395]")), TileToGPS(new Cell("[27450,13396]"))));
+//        int[] tileXY = latLongToTileXY(31.23607, 121.50878);
+//        int[] tileXY2 = latLongToTileXY(31.21584,121.55732);
+//        System.out.println(tileXY[0] + "," + tileXY[1]);
+//        System.out.println(tileXY2[0] + "," + tileXY2[1]);
+//        tileXY = latLongToTileXY(31.20641,121.59598);
+//        tileXY2 = latLongToTileXY(31.24773,121.44903);
+//        System.out.println(tileXY[0] + "," + tileXY[1]);
+//        System.out.println(tileXY2[0] + "," + tileXY2[1]);
 
         //31.2360,121.5088陆家嘴
         //31.15917,121.42454上海南

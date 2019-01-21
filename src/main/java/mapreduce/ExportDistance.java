@@ -1,26 +1,22 @@
 package mapreduce;
 
-import bean.GPS;
 import constant.HBaseConstant;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
-import org.apache.hadoop.hbase.mapreduce.TableReducer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.MapFileOutputFormat;
-import util.CommonUtil;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * build inverted index by the trajectory set.
@@ -42,7 +38,7 @@ public class ExportDistance {
             // process data for the row from the Result instance.
             String trajectoryId = Bytes.toString(value.getRow());
 //            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID));
-            double distance = Bytes.toDouble(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_DISTANCE));
+            double distance = Bytes.toDouble(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_DISTANCE.getBytes(StandardCharsets.UTF_8)));
 
             mapKey.set(trajectoryId);
             mapValue.set(distance);

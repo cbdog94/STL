@@ -4,6 +4,7 @@ import util.CommonUtil;
 import util.TileSystem;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,9 +54,20 @@ public class Cell implements Serializable {
         }
     }
 
+
+    public Cell(Cell cell) {
+        this.tileX = cell.tileX;
+        this.tileY = cell.tileY;
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj instanceof Cell && tileX == ((Cell) obj).tileX && tileY == ((Cell) obj).tileY;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(tileX, tileY);
     }
 
     @Override

@@ -6,7 +6,9 @@ import constant.HBaseConstant;
 import util.CommonUtil;
 import util.TileSystem;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -18,6 +20,7 @@ import java.util.stream.Stream;
 public class TrajectoryUtil {
 
     private static HBaseUtil hBaseUtil = new HBaseUtil();
+    public static Map<Cell, Integer> numMap = new ConcurrentHashMap<>();
 
     /**
      * Acquire the trajectoryPoints of trajectoryID from HBase
@@ -25,16 +28,11 @@ public class TrajectoryUtil {
     public static List<GPS> getTrajectoryGPSPoints(String trajectoryID) {
         String result = hBaseUtil.getColumnFromHBase(
                 HBaseConstant.TABLE_SH_TRAJECTORY,
-                trajectoryID.getBytes(),
-                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_GPS);
+                trajectoryID.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_GPS.getBytes(StandardCharsets.UTF_8));
 
         String[] gpsSplits = result.substring(1, result.length() - 1).split(", ");
-//        Stream.of(gpsSplits).map(x->new GPS(x)).collect(Collectors.toList())
-//        List<GPS> tileList = new ArrayList<>();
-//        for (String tile : tileSplits) {
-//            tileList.add(new GPS(tile));
-//        }
         return Stream.of(gpsSplits).map(GPS::new).collect(Collectors.toList());
     }
 
@@ -44,9 +42,9 @@ public class TrajectoryUtil {
     public static List<Cell> getTrajectoryCells(String trajectoryID) {
         String result = hBaseUtil.getColumnFromHBase(
                 HBaseConstant.TABLE_SH_TRAJECTORY,
-                trajectoryID.getBytes(),
-                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_CELL);
+                trajectoryID.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_CELL.getBytes(StandardCharsets.UTF_8));
 
         String[] tileSplits = result.substring(1, result.length() - 1).split(", ");
 
@@ -62,8 +60,8 @@ public class TrajectoryUtil {
         Map<String, String> queryResult = hBaseUtil.getBatchColumnFromHBase(
                 CommonUtil.getTrajectoryTable(city),
                 trajectoryBytes,
-                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_CELL);
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_CELL.getBytes(StandardCharsets.UTF_8));
 
         Map<String, List<Cell>> result = new HashMap<>();
         for (Map.Entry<String, String> entry : queryResult.entrySet()) {
@@ -79,8 +77,8 @@ public class TrajectoryUtil {
         Map<String, String> queryResult = hBaseUtil.getBatchColumnFromHBase(
                 CommonUtil.getTrajectoryTable(city),
                 trajectoryBytes,
-                HBaseConstant.COLUMN_FAMILY_TRAJECTORY,
-                HBaseConstant.COLUMN_GPS);
+                HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8),
+                HBaseConstant.COLUMN_GPS.getBytes(StandardCharsets.UTF_8));
 
         Map<String, List<GPS>> result = new HashMap<>();
         for (Map.Entry<String, String> entry : queryResult.entrySet()) {
@@ -101,12 +99,13 @@ public class TrajectoryUtil {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
                 CommonUtil.getInvertedTable(city),
                 start.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
+                HBaseConstant.COLUMN_FAMILY_INDEX.getBytes(StandardCharsets.UTF_8));
         Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
                 CommonUtil.getInvertedTable(city),
                 end.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
-
+                HBaseConstant.COLUMN_FAMILY_INDEX.getBytes(StandardCharsets.UTF_8));
+        numMap.put(start, startMaps.size());
+        numMap.put(end, endMaps.size());
         return getAllTrajectoryID(startMaps, endMaps);
     }
 
@@ -114,11 +113,11 @@ public class TrajectoryUtil {
         Map<String, String> startMaps = hBaseUtil.getColumnFamilyFromHBase(
                 CommonUtil.getInvertedTable(city),
                 start.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
+                HBaseConstant.COLUMN_FAMILY_INDEX.getBytes(StandardCharsets.UTF_8));
         Map<String, String> endMaps = hBaseUtil.getColumnFamilyFromHBase(
                 CommonUtil.getInvertedTable(city),
                 end.toString().getBytes(),
-                HBaseConstant.COLUMN_FAMILY_INDEX);
+                HBaseConstant.COLUMN_FAMILY_INDEX.getBytes(StandardCharsets.UTF_8));
 
         Set<String> trajectoryID = getAllTrajectoryID(startMaps, endMaps);
 

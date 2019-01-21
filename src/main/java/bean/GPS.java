@@ -46,7 +46,13 @@ public class GPS implements Serializable {
     public GPS(double latitude, double longitude, Date timestamp) {
         this.latitude = latitude;
         this.longitude = longitude;
-        this.timestamp = timestamp;
+        this.timestamp = timestamp == null ? null : new Date(timestamp.getTime());
+    }
+
+    public GPS(GPS gps) {
+        this.latitude = gps.latitude;
+        this.longitude = gps.longitude;
+        this.timestamp = gps.timestamp == null ? null : new Date(gps.timestamp.getTime());
     }
 
     /***

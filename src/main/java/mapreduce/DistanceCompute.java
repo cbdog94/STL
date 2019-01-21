@@ -1,10 +1,6 @@
 package mapreduce;
 
 import bean.GPS;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import constant.HBaseConstant;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -21,8 +17,7 @@ import org.apache.hadoop.mapreduce.Job;
 import util.CommonUtil;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 /**
  * build inverted index by the trajectory set.
@@ -30,6 +25,23 @@ import java.util.List;
  * @author Bin Cheng
  */
 public class DistanceCompute {
+
+    private static double computeDistance(String trajectory) {
+        String[] points = trajectory.substring(1, trajectory.length() - 1).split(", ");
+        if (points.length == 0)
+            return 0;
+
+        double distance = 0.0;
+        GPS lastGPS = new GPS(points[0]);
+
+        for (int i = 1; i < points.length; i++) {
+            GPS currentGPS = new GPS(points[i]);
+            distance += CommonUtil.distanceBetween(lastGPS, currentGPS);
+            lastGPS = currentGPS;
+        }
+
+        return distance;
+    }
 
     /**
      * split the whole trajectory into piece of tiles.
@@ -44,7 +56,7 @@ public class DistanceCompute {
             // process data for the row from the Result instance.
             String trajectoryId = Bytes.toString(value.getRow());
 //            String taxiId = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_ID));
-            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY, HBaseConstant.COLUMN_GPS));
+            String trajectory = Bytes.toString(value.getValue(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_GPS.getBytes(StandardCharsets.UTF_8)));
 
             mapKey.set(trajectoryId);
             mapValue.set(trajectory);
@@ -52,28 +64,6 @@ public class DistanceCompute {
 
         }
 
-    }
-
-    /**
-     * put the inverted index into a HBase table
-     * that the row key is the tile point,
-     * the column is the trajectoryID and
-     * the value is the index of title in the trajectory above.
-     */
-    public static class Reduce extends TableReducer<Text, Text, ImmutableBytesWritable> {
-
-        @Override
-        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-
-            for (Text val : values) {
-                double distance = computeDistance(val.toString());
-
-                Put put = new Put(key.getBytes());
-                put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO, HBaseConstant.COLUMN_DISTANCE, Bytes.toBytes(distance));
-                context.write(null, put);
-            }
-
-        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -105,21 +95,26 @@ public class DistanceCompute {
         }
     }
 
-    static double computeDistance(String trajectory) {
-        String[] points = trajectory.substring(1, trajectory.length() - 1).split(", ");
-        if (points.length == 0)
-            return 0;
+    /**
+     * put the inverted index into a HBase table
+     * that the row key is the tile point,
+     * the column is the trajectoryID and
+     * the value is the index of title in the trajectory above.
+     */
+    public static class Reduce extends TableReducer<Text, Text, ImmutableBytesWritable> {
 
-        double distance = 0.0;
-        GPS lastGPS = new GPS(points[0]);
+        @Override
+        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 
-        for (int i = 1; i < points.length; i++) {
-            GPS currentGPS = new GPS(points[i]);
-            distance += CommonUtil.distanceBetween(lastGPS, currentGPS);
-            lastGPS = currentGPS;
+            for (Text val : values) {
+                double distance = computeDistance(val.toString());
+
+                Put put = new Put(key.getBytes());
+                put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_DISTANCE.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(distance));
+                context.write(null, put);
+            }
+
         }
-
-        return distance;
     }
 
 }

@@ -6,12 +6,13 @@ import bean.GPS;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import hbase.TrajectoryUtil;
+import org.apache.commons.math3.stat.StatUtils;
 import util.CommonUtil;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Spatial-Temporal Laws
@@ -45,8 +46,11 @@ public class STL {
 
     private void run() {
 
-        Cell startCell = new Cell(this.startCell);
-        Cell endCell = new Cell(this.endCell);
+//        Cell startCell = new Cell(this.startCell);
+//        Cell endCell = new Cell(this.endCell);
+
+        Cell startCell = new Cell("[109776,53554]");
+        Cell endCell = new Cell("[109802,53581]");
 
         // Origin trajectory.
         Map<String, List<GPS>> trajectoryGPS = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, city);
@@ -59,38 +63,42 @@ public class STL {
         double[] distArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[0]).toArray();
         double[] timeArray = trajectoryInfoMap.values().stream().mapToDouble(s -> s[1]).toArray();
 
-        double distance60 = CommonUtil.percentile(distArray, 0.6);
-        double time60 = CommonUtil.percentile(timeArray, 0.6);
+        double distance60 = StatUtils.percentile(distArray, 60);
+        double time60 = StatUtils.percentile(timeArray, 60);
 
         Map<String, List<GPS>> trainTrajectory = Maps.filterKeys(trajectoryGPS, Maps.filterValues(trajectoryInfoMap, s -> s[0] < distance60 || s[1] < time60)::containsKey);
         System.out.println("Train set size:" + trainTrajectory.size());
 
+        List<GPS> test = trainTrajectory.remove("ef169fae9f6f40ed845e691b4a9666e2");
+        STLDetection.detect(new ArrayList<>(trainTrajectory.values()), test, thresholdTime, thresholdDist, degree);
+
+
         // Anomaly Label.
-        Set<String> anomalyTrajectory = CommonUtil.anomalyTrajectory(trajectoryGPS, city, debug);
-
-        // Detection
-        long start = System.currentTimeMillis();
-
-        Set<String> STLAnomaly = trajectoryGPS.entrySet().parallelStream()
-                .filter(entry -> {
-                            Map<String, List<GPS>> tmp = new HashMap<>(trajectoryGPS);
-                            tmp.remove(entry.getKey());
-                            double score = STLDetection.detect(new ArrayList<>(tmp.values()), entry.getValue(), thresholdTime, thresholdDist, degree);
-                            return score > 0.1;
-                        }
-                ).map(Map.Entry::getKey).collect(Collectors.toSet());
-
-        long end = System.currentTimeMillis();
-
-        // Evaluation.
-        int TP = Sets.intersection(anomalyTrajectory, STLAnomaly).size();
-        int FP = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), STLAnomaly).size();
-        int FN = anomalyTrajectory.size() - TP;
-        int TN = trajectoryGPS.size() - anomalyTrajectory.size() - FP;
-
-        CommonUtil.printResult(TP, FP, FN, TN);
-
-        System.out.println("Pre Time: " + (end - start) * 1.0 / trajectoryGPS.size() / 1000);
+//        Set<String> anomalyTrajectory = CommonUtil.anomalyTrajectory(trajectoryGPS, city, debug);
+//
+//        // Detection
+//        long start = System.currentTimeMillis();
+//
+//        Set<String> STLAnomaly = trajectoryGPS.entrySet().parallelStream()
+//                .filter(entry -> {
+//                            Map<String, List<GPS>> tmp = new HashMap<>(trajectoryGPS);
+//                            tmp.remove(entry.getKey());
+//                            double score = STLDetection.detect(new ArrayList<>(tmp.values()), entry.getValue(), thresholdTime, thresholdDist, degree);
+//                            return score > 0.1;
+//                        }
+//                ).map(Map.Entry::getKey).collect(Collectors.toSet());
+//
+//        long end = System.currentTimeMillis();
+//
+//        // Evaluation.
+//        int TP = Sets.intersection(anomalyTrajectory, STLAnomaly).size();
+//        int FP = Sets.intersection(Sets.difference(trajectoryGPS.keySet(), anomalyTrajectory), STLAnomaly).size();
+//        int FN = anomalyTrajectory.size() - TP;
+//        int TN = trajectoryGPS.size() - anomalyTrajectory.size() - FP;
+//
+//        CommonUtil.printResult(TP, FP, FN, TN);
+//
+//        System.out.println("Pre Time: " + (end - start) * 1.0 / trajectoryGPS.size() / 1000);
     }
 
 }
