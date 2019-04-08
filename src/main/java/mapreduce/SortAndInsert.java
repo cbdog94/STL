@@ -55,33 +55,7 @@ public class SortAndInsert {
         main.run();
     }
 
-    /**
-     * Map the GPS trajectory to Cell trajectory, and convert the form of data so that it can be inserted into HBase.
-     */
-    private static Put preProcessTrajectory(String taxiID, List<GPS> trajectory) {
-
-        //ignore while the trajectory is too long.
-        double distance = util.CommonUtil.trajectoryDistance(trajectory);
-        if (distance > DISTANCE_LIMIT_MAX || distance < DISTANCE_LIMIT_MIN) {
-            return null;
-        }
-
-        //generate grid cell trajectory.
-        List<Cell> cells = GridUtil.gridGPSSequence(trajectory);
-
-        //if the number of cells are less than 5, we suppose that this trajectory is noise data.
-//        if (cells.size() < CELL_LOWER_BOUND) {
-//            return null;
-//        }
-
-        Put put = new Put(Bytes.toBytes(CommonUtil.getUUID()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_ID.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(taxiID));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_CELL.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(cells.toString()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_GPS.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(trajectory.toString()));
-        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_DISTANCE.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(distance));
-        return put;
-
-    }
+    private static final int CELL_LOWER_BOUND = 5;
 
     private void run() throws Exception {
 
@@ -150,7 +124,34 @@ public class SortAndInsert {
 
         }
     }
-//    private static final int CELL_LOWER_BOUND = 5;
+
+    /**
+     * Map the GPS trajectory to Cell trajectory, and convert the form of data so that it can be inserted into HBase.
+     */
+    private static Put preProcessTrajectory(String taxiID, List<GPS> trajectory) {
+
+        //ignore while the trajectory is too long.
+        double distance = util.CommonUtil.trajectoryDistance(trajectory);
+        if (distance > DISTANCE_LIMIT_MAX || distance < DISTANCE_LIMIT_MIN) {
+            return null;
+        }
+
+        //generate grid cell trajectory.
+        List<Cell> cells = GridUtil.gridGPSSequence(trajectory);
+
+        //if the number of cells are less than 5, we suppose that this trajectory is noise data.
+        if (cells.size() < CELL_LOWER_BOUND) {
+            return null;
+        }
+
+        Put put = new Put(Bytes.toBytes(CommonUtil.getUUID()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_ID.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(taxiID));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_CELL.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(cells.toString()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_TRAJECTORY.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_GPS.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(trajectory.toString()));
+        put.addColumn(HBaseConstant.COLUMN_FAMILY_INFO.getBytes(StandardCharsets.UTF_8), HBaseConstant.COLUMN_DISTANCE.getBytes(StandardCharsets.UTF_8), Bytes.toBytes(distance));
+        return put;
+
+    }
 
     public static class Reduce extends TableReducer<Text, Text, ImmutableBytesWritable> {
 

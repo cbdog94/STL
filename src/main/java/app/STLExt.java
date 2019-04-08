@@ -1,6 +1,6 @@
 package app;
 
-import algorithm.STLDetection;
+import algorithm.STLExtDetection;
 import bean.Cell;
 import bean.GPS;
 import com.beust.jcommander.JCommander;
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * Spatial-Temporal Laws
  */
-public class STL {
+public class STLExt {
 
     @Parameter(names = {"--city", "-c"}, description = "Which city to be counted (SH/SZ/CD).", required = true, validateWith = CommonUtil.CityValidator.class)
     private String city;
@@ -29,6 +29,8 @@ public class STL {
     private double thresholdTime = 0.7;
     @Parameter(names = {"-tD"}, description = "Threshold of distance.")
     private double thresholdDist = 0.7;
+    @Parameter(names = {"-t"}, description = "Parameter of KMeans.")
+    private double t = 8;
 
     @Parameter(names = {"-s"}, description = "Start cell.", validateWith = CommonUtil.CellValidator.class)
     private String startCell = "[109776,53554]";
@@ -36,7 +38,7 @@ public class STL {
     private String endCell = "[109873,53574]";
 
     public static void main(String... argv) {
-        STL main = new STL();
+        STLExt main = new STLExt();
         JCommander.newBuilder()
                 .addObject(main)
                 .build()
@@ -49,8 +51,8 @@ public class STL {
         Cell startCell = new Cell(this.startCell);
         Cell endCell = new Cell(this.endCell);
 
-//        Cell startCell = new Cell("[109777,53556]");
-//        Cell endCell = new Cell("[109881,53589]");
+//        Cell startCell = new Cell("[109776,53554]");
+//        Cell endCell = new Cell("[109802,53581]");
 
         // Origin trajectory.
         Map<String, List<GPS>> trajectoryGPS = TrajectoryUtil.getAllTrajectoryGPSs(startCell, endCell, city);
@@ -78,13 +80,19 @@ public class STL {
 
         // Detection
         long start = System.currentTimeMillis();
+        STLExtDetection detection = new STLExtDetection(new ArrayList<>(trainTrajectory.values()), t);
 
-//        Map<String, Double> scores = Maps.transformValues(trajectoryGPS, v -> STLDetection.detect(new ArrayList<>(trainTrajectory.values()), v, thresholdTime, thresholdDist, degree));
+//        Set<String> STLAnomaly = trajectoryGPS.entrySet().parallelStream()
+//                .filter(entry -> {
+//                            double score = detection.detect( entry.getValue(), thresholdTime, thresholdDist, degree);
+//                            return score > 0.1;
+//                        }
+//                ).map(Map.Entry::getKey).collect(Collectors.toSet());
         Set<String> STLAnomaly = trajectoryGPS.entrySet().parallelStream()
-                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), STLDetection.detect(new ArrayList<>(trainTrajectory.values()), entry.getValue(), thresholdTime, thresholdDist, degree)))
+                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), detection.detect(entry.getValue(), thresholdTime, thresholdDist, degree)))
                 .sorted((x, y) -> Double.compare(y.getValue(), x.getValue()))
                 .limit((long) (anomalyTrajectory.size() * 3)).map(Map.Entry::getKey).collect(Collectors.toSet());
-//        Set<String> STLAnomaly = scores.entrySet().stream().sorted((x, y) -> Double.compare(y.getValue(), x.getValue())).limit(anomalyTrajectory.size()).map(Map.Entry::getKey).collect(Collectors.toSet());
+
         long end = System.currentTimeMillis();
 
         // Evaluation.

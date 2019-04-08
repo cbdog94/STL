@@ -20,7 +20,7 @@ public class FindPair {
     @Parameter(names = {"--city", "-c"}, description = "Which city to be counted (SH/SZ/CD).", required = true, validateWith = CommonUtil.CityValidator.class)
     private String city;
 
-    private static String hdfs = "hdfs://192.168.0.53:9000";
+    private static String hdfs = "hdfs://192.168.0.53:9000/user/hadoop";
 
     public static void main(String... argv) {
         FindPair main = new FindPair();
@@ -41,11 +41,12 @@ public class FindPair {
         conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
         FileSystem fs = FileSystem.get(new URI(hdfs), conf);
 
-        BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(hdfs + "/" + city.toLowerCase() + "_start_hotspot/part-r-00000"))));
+        BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(hdfs + "/" + city + "" +
+                "_Start_HotSpot/part-r-00000"))));
         List<String> SHStart = br.lines().map(s -> s.split("\t")[0]).collect(Collectors.toList());
         List<String> SHSUBStart = SHStart.subList(SHStart.size() - 10, SHStart.size());
 
-        br = new BufferedReader(new InputStreamReader(fs.open(new Path(hdfs + "/" + city.toLowerCase() + "_end_hotspot/part-r-00000"))));
+        br = new BufferedReader(new InputStreamReader(fs.open(new Path(hdfs + "/" + city + "_End_HotSpot/part-r-00000"))));
         List<String> SHEnd = br.lines().map(s -> s.split("\t")[0]).collect(Collectors.toList());
         List<String> SHSubEnd = SHEnd.subList(SHEnd.size() - 10, SHEnd.size());
 

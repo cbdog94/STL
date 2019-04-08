@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
  */
 public class CommonUtil {
 
+    private static Calendar calendar = GregorianCalendar.getInstance();
+
     /**
      * Generate the UUID without '-'
      *
@@ -43,6 +45,16 @@ public class CommonUtil {
         if (GPS1.getTimestamp() == null || GPS2.getTimestamp() == null)
             return -1;
         return Math.abs(GPS1.getTimestamp().getTime() - GPS2.getTimestamp().getTime()) * 1.0 / 1000;
+    }
+
+    /**
+     * @return hour
+     */
+    public static int getHour(GPS gps) {
+        if (gps.getTimestamp() == null)
+            return -1;
+        calendar.setTime(gps.getTimestamp());
+        return calendar.get(Calendar.HOUR_OF_DAY);
     }
 
     /**
@@ -163,7 +175,6 @@ public class CommonUtil {
     }
 
 
-
     public static String getTrajectoryTable(String city) {
         switch (city) {
             case "SH":
@@ -172,6 +183,8 @@ public class CommonUtil {
                 return HBaseConstant.TABLE_SZ_TRAJECTORY;
             case "CD":
                 return HBaseConstant.TABLE_CD_TRAJECTORY;
+            case "XA":
+                return HBaseConstant.TABLE_XA_TRAJECTORY;
         }
         return null;
     }
@@ -184,12 +197,14 @@ public class CommonUtil {
                 return HBaseConstant.TABLE_SZ_TRAJECTORY_INVERTED;
             case "CD":
                 return HBaseConstant.TABLE_CD_TRAJECTORY_INVERTED;
+            case "XA":
+                return HBaseConstant.TABLE_XA_TRAJECTORY_INVERTED;
         }
         return null;
     }
 
     public static boolean isValidCity(String city) {
-        return city.equals("SH") || city.equals("SZ") || city.equals("CD");
+        return city.equals("SH") || city.equals("SZ") || city.equals("CD") || city.equals("XA");
     }
 
     public static class CityValidator implements IParameterValidator {
@@ -197,7 +212,7 @@ public class CommonUtil {
         public void validate(String name, String value)
                 throws ParameterException {
             if (!CommonUtil.isValidCity(value)) {
-                throw new ParameterException("Parameter " + name + " should be 'SH', 'SZ' or 'CD' (found " + value + ")");
+                throw new ParameterException("Parameter " + name + " should be 'SH', 'SZ', 'CD' or 'XA' (found " + value + ")");
             }
         }
     }

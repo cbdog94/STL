@@ -13,7 +13,7 @@ public class TileSystem {
     private static final double MIN_LONGITUDE = -180;
     private static final double MAX_LONGITUDE = 180;
 
-    private static final int DEFAULT_LEVEL = 15;
+    private static final int DEFAULT_LEVEL = 17;
 
 
     /**
@@ -234,10 +234,11 @@ public class TileSystem {
 
     public static void main(String[] args) {
 //        [109708,53571] [109883,53589]
-        System.out.println(TileToGPS(new Cell("[109715,53587]")));
+        System.out.println(TileToGPS(new Cell("[109777,53556]")));
+        System.out.println(TileToGPS(new Cell("[109706,53571]")));
 //        System.out.println(TileToGPS(new Cell("[109706,53571]")));
-        System.out.println(GPSToTile(new GPS(31.1716, 121.5814, null)));
-        System.out.println(CommonUtil.distanceBetween(TileToGPS(new Cell("[27450,13395]")), TileToGPS(new Cell("[27450,13396]"))));
+//        System.out.println(GPSToTile(new GPS(31.1716, 121.5814, null)));
+//        System.out.println(CommonUtil.distanceBetween(TileToGPS(new Cell("[27450,13395]")), TileToGPS(new Cell("[27450,13396]"))));
 //        int[] tileXY = latLongToTileXY(31.23607, 121.50878);
 //        int[] tileXY2 = latLongToTileXY(31.21584,121.55732);
 //        System.out.println(tileXY[0] + "," + tileXY[1]);

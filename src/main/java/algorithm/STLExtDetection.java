@@ -1,5 +1,7 @@
 package algorithm;
 
+import algorithm.cluster.ClusterUtil;
+import algorithm.cluster.HierarchicalClustering;
 import bean.GPS;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.distribution.NormalDistribution;
@@ -11,24 +13,52 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * STL algorithm
+ * Extension of STL algorithm
  *
  * @author Bin Cheng
  */
-public class STLDetection {
+public class STLExtDetection {
 
-    private static final int DEGREE = 3;
-    private static final double THRESHOLD = 0.9;
-    private static Map<Integer, double[]> cacheWT = new ConcurrentHashMap<>();
-    private static Map<Integer, double[]> cacheWD = new ConcurrentHashMap<>();
-    private static Map<Integer, Double> cacheET = new ConcurrentHashMap<>();
-    private static Map<Integer, Double> cacheED = new ConcurrentHashMap<>();
+    private final int DEGREE = 3;
+    private final double THRESHOLD = 0.9;
+    private Map<Integer, double[]> cacheWT = new ConcurrentHashMap<>();
+    private Map<Integer, double[]> cacheWD = new ConcurrentHashMap<>();
+    private Map<Integer, Double> cacheET = new ConcurrentHashMap<>();
+    private Map<Integer, Double> cacheED = new ConcurrentHashMap<>();
+    private List<List<GPS>> allNormalTrajectories;
+    private int[] map;
+    private List<List<Integer>> clusterHour;
 
-    public static double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory) {
-        return detect(allNormalTrajectories, testTrajectory, THRESHOLD, THRESHOLD, DEGREE);
+    public STLExtDetection(List<List<GPS>> allNormalTrajectories, double t) {
+        this.allNormalTrajectories = allNormalTrajectories;
+        Map<Integer, Double> times = new ConcurrentHashMap<>();
+        Map<Integer, Integer> counts = new ConcurrentHashMap<>();
+
+        allNormalTrajectories.parallelStream().forEach(x -> {
+            int startHour = CommonUtil.getHour(x.get(0));
+            double time = CommonUtil.timeBetween(x.get(0), x.get(x.size() - 1));
+            synchronized (this) {
+                times.put(startHour, times.getOrDefault(startHour, 0.0) + time);
+            }
+            synchronized (this) {
+                counts.put(startHour, counts.getOrDefault(startHour, 0) + 1);
+            }
+        });
+
+        double[] timeList = new double[24];
+        for (Map.Entry<Integer, Double> entry : times.entrySet()) {
+            timeList[entry.getKey()] = entry.getValue() / counts.get(entry.getKey());
+        }
+        ClusterUtil clusterUtil = new HierarchicalClustering(timeList, t);
+        map = clusterUtil.getClusterMap();
+        clusterHour = clusterUtil.getAllClusters();
     }
 
-    public static double detect(List<List<GPS>> allNormalTrajectories, List<GPS> testTrajectory, double thresholdTime, double thresholdDist, int degree) {
+    public double detect(List<GPS> testTrajectory) {
+        return detect(testTrajectory, THRESHOLD, THRESHOLD, DEGREE);
+    }
+
+    public double detect(List<GPS> testTrajectory, double thresholdTime, double thresholdDist, int degree) {
 
         List<Double> linearDistance = new ArrayList<>();//x
         List<Double> intervals = new ArrayList<>();//y
@@ -42,8 +72,9 @@ public class STLDetection {
         Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
         calendar.setTime(startTime);   // assigns calendar to given date
         int testStartHour = calendar.get(Calendar.HOUR_OF_DAY);
+        int cluster = map[testStartHour];
 
-        if (!cacheWT.containsKey(testStartHour)) {
+        if (!cacheWT.containsKey(cluster)) {
 
             //get LDT of each point
             for (List<GPS> oneTrajectory : allNormalTrajectories) {
@@ -56,8 +87,7 @@ public class STLDetection {
                 int currentStartHour = calendar.get(Calendar.HOUR_OF_DAY);
 
                 //filter
-                if (currentStartHour < testStartHour - 1 ||
-                        currentStartHour > testStartHour + 1)
+                if (!clusterHour.get(cluster).contains(currentStartHour))
                     continue;
 
                 for (GPS currentPoint : oneTrajectory) {
@@ -103,18 +133,18 @@ public class STLDetection {
             wd = MatrixUtils.inverse(XT.multiply(X)).multiply(XT).multiply(D).getColumn(0);
             et = (TT.multiply(T).subtract(TT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wt)))).getEntry(0, 0) / x.length;
             ed = (DT.multiply(D).subtract(DT.multiply(X).multiply(MatrixUtils.createColumnRealMatrix(wd)))).getEntry(0, 0) / x.length;
-            synchronized (STLDetection.class) {
-                cacheWT.put(testStartHour, wt);
-                cacheWD.put(testStartHour, wd);
-                cacheET.put(testStartHour, et);
-                cacheED.put(testStartHour, ed);
+            synchronized (this) {
+                cacheWT.put(cluster, wt);
+                cacheWD.put(cluster, wd);
+                cacheET.put(cluster, et);
+                cacheED.put(cluster, ed);
             }
         } else {
-            synchronized (STLDetection.class) {
-                wt = cacheWT.get(testStartHour);
-                wd = cacheWD.get(testStartHour);
-                et = cacheET.get(testStartHour);
-                ed = cacheED.get(testStartHour);
+            synchronized (this) {
+                wt = cacheWT.get(cluster);
+                wd = cacheWD.get(cluster);
+                et = cacheET.get(cluster);
+                ed = cacheED.get(cluster);
             }
         }
 
@@ -154,5 +184,13 @@ public class STLDetection {
 //        System.out.println(anomalyScore);
         return anomalyScore;
     }
+
+//    public static void main(String[] args) {
+//        double[] list = new double[]{449, 271, 139, 60, 50, 99, 178, 315, 610, 633, 499, 436, 486, 579, 551, 579, 509, 540, 521, 475, 480, 573, 626, 527};
+//        ClusterUtil clusterUtil = new KMeans(list);
+//        System.out.println(Arrays.toString(clusterUtil.getClusterMap()));
+//        System.out.pristerUtil.getAllClusters());
+//    }
+
 
 }
